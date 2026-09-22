@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Traffic Intelligence – Bangalore</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:        #0a0d14;
+    --bg2:       #0f1420;
+    --bg3:       #141926;
+    --card:      #161c2e;
+    --border:    #1e2a45;
+    --accent:    #00d4ff;
+    --accent2:   #ff6b35;
+    --accent3:   #7c3aed;
+    --green:     #00ff88;
+    --yellow:    #ffd700;
+    --red:       #ff4757;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --glow:      0 0 20px rgba(0,212,255,0.3);
+    --glow2:     0 0 20px rgba(255,107,53,0.3);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events:none;
+    z-index:0;
+  }
+
+  .wrapper { position:relative; z-index:1; max-width:1400px; margin:0 auto; padding:0 24px 40px; }
+
+  /* HEADER */
+  header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 28px 0 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+  }
+  .logo-group { display:flex; align-items:center; gap:14px; }
+  .logo-icon {
+    width:48px; height:48px;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px;
+    box-shadow: var(--glow);
+  }
+  .logo-text h1 {
+    font-family:'Rajdhani', sans-serif;
+    font-size:26px; font-weight:700;
+    letter-spacing:2px;
+    background: linear-gradient(90deg, var(--accent), #a78bfa);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .logo-text p { font-size:11px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; margin-top:2px; }
+
+  .header-right { display:flex; align-items:center; gap:20px; }
+  .model-badge {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius:8px;
+    padding:6px 14px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; color:var(--accent);
+    display:flex; align-items:center; gap:8px;
+  }
+  .model-badge::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); animation: pulse 2s infinite; }
+  .accuracy-pill {
+    background: rgba(0,255,136,0.1);
+    border:1px solid rgba(0,255,136,0.3);
+    color:var(--green);
+    border-radius:20px;
+    padding:4px 12px;
+    font-size:12px; font-weight:500;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* CONTROLS */
+  .controls-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius:16px;
+    padding: 20px 24px;
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+    margin-bottom: 28px;
+  }
+  .ctrl-group { display:flex; flex-direction:column; gap:6px; flex:1; min-width:140px; }
+  .ctrl-group label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .ctrl-group select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius:10px;
+    padding:10px 14px;
+    font-size:14px;
+    font-family:'Inter', sans-serif;
+    cursor:pointer;
+    appearance:none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2364748b' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    transition: border-color 0.2s;
+  }
+  .ctrl-group select:focus { outline:none; border-color:var(--accent); }
+
+  .flyover-toggle {
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .flyover-toggle label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .toggle-btn {
+    display:flex; align-items:center; gap:10px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius:10px;
+    padding:8px 16px;
+    cursor:pointer;
+    transition: all 0.3s;
+    font-size:14px; color:var(--muted);
+    font-family:'Inter', sans-serif;
+    white-space:nowrap;
+  }
+  .toggle-btn.active {
+    border-color:var(--green);
+    background: rgba(0,255,136,0.08);
+    color:var(--green);
+    box-shadow: 0 0 12px rgba(0,255,136,0.2);
+  }
+  .toggle-dot {
+    width:32px; height:18px;
+    background: var(--border);
+    border-radius:9px;
+    position:relative;
+    transition:background 0.3s;
+  }
+  .toggle-dot::after {
+    content:''; position:absolute;
+    width:12px; height:12px;
+    background:#fff;
+    border-radius:50%;
+    top:3px; left:3px;
+    transition: transform 0.3s;
+  }
+  .toggle-btn.active .toggle-dot { background:var(--green); }
+  .toggle-btn.active .toggle-dot::after { transform:translateX(14px); }
+
+  .predict-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    border:none; color:#fff;
+    border-radius:10px;
+    padding:11px 28px;
+    font-size:14px; font-weight:600;
+    font-family:'Rajdhani', sans-serif;
+    letter-spacing:1px;
+    cursor:pointer;
+    transition: all 0.2s;
+    box-shadow: var(--glow);
+    align-self:flex-end;
+    white-space:nowrap;
+    text-transform:uppercase;
+  }
+  .predict-btn:hover { transform:translateY(-2px); box-shadow:0 0 30px rgba(0,212,255,0.5); }
+  .predict-btn:active { transform:translateY(0); }
+
+  /* STATS GRID */
+  .stats-grid {
+    display:grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap:16px;
+    margin-bottom:28px;
+  }
+  @media(max-width:900px){ .stats-grid{ grid-template-columns:repeat(3,1fr); } }
+  @media(max-width:600px){ .stats-grid{ grid-template-columns:repeat(2,1fr); } }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius:14px;
+    padding:20px;
+    position:relative;
+    overflow:hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .stat-card:hover { transform:translateY(-3px); box-shadow:0 8px 32px rgba(0,0,0,0.4); }
+  .stat-card::before {
+    content:''; position:absolute;
+    top:0; left:0; right:0; height:3px;
+    border-radius:14px 14px 0 0;
+  }
+  .stat-card.cars::before   { background: linear-gradient(90deg, #00d4ff, #0088ff); }
+  .stat-card.bikes::before  { background: linear-gradient(90deg, #ff6b35, #ff9500); }
+  .stat-card.buses::before  { background: linear-gradient(90deg, #7c3aed, #a855f7); }
+  .stat-card.trucks::before { background: linear-gradient(90deg, #ffd700, #ff9500); }
+  .stat-card.total::before  { background: linear-gradient(90deg, #00ff88, #00d4ff); }
+
+  .stat-icon { font-size:24px; margin-bottom:10px; }
+  .stat-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+  .stat-value {
+    font-family:'Rajdhani', sans-serif;
+    font-size:32px; font-weight:700;
+    line-height:1;
+    transition: all 0.5s;
+  }
+  .stat-card.cars   .stat-value { color:var(--accent); }
+  .stat-card.bikes  .stat-value { color:var(--accent2); }
+  .stat-card.buses  .stat-value { color:#a855f7; }
+  .stat-card.trucks .stat-value { color:var(--yellow); }
+  .stat-card.total  .stat-value { color:var(--green); }
+
+  .stat-sub { font-size:11px; color:var(--muted); margin-top:4px; }
+  .stat-delta {
+    font-size:11px;
+    padding:2px 8px;
+    border-radius:20px;
+    display:inline-block;
+    margin-top:6px;
+    font-weight:500;
+  }
+  .delta-down { background:rgba(0,255,136,0.1); color:var(--green); }
+  .delta-up   { background:rgba(255,71,87,0.1); color:var(--red); }
+
+  /* CHARTS ROW */
+  .charts-row {
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:20px;
+    margin-bottom:28px;
+  }
+  @media(max-width:800px){ .charts-row{ grid-template-columns:1fr; } }
+
+  .chart-card {
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:20px;
+  }
+  .chart-title {
+    font-family:'Rajdhani', sans-serif;
+    font-size:15px; font-weight:600;
+    letter-spacing:1px; text-transform:uppercase;
+    color:var(--text); margin-bottom:16px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .chart-title span { width:6px; height:6px; border-radius:50%; background:var(--accent); display:inline-block; }
+  .chart-wrap { position:relative; height:220px; }
+
+  /* BOTTOM ROW */
+  .bottom-row {
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:20px;
+  }
+  @media(max-width:800px){ .bottom-row{ grid-template-columns:1fr; } }
+
+  /* FLYOVER PANEL */
+  .flyover-panel {
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:20px;
+  }
+  .flyover-panel.active-flyover {
+    border-color: rgba(0,255,136,0.4);
+    box-shadow: 0 0 20px rgba(0,255,136,0.1);
+  }
+  .panel-title {
+    font-family:'Rajdhani', sans-serif;
+    font-size:15px; font-weight:600;
+    letter-spacing:1px; text-transform:uppercase;
+    margin-bottom:16px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .panel-title span { width:6px; height:6px; border-radius:50%; background:var(--accent2); display:inline-block; }
+
+  .impact-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .impact-item {
+    background:var(--bg3);
+    border-radius:10px;
+    padding:14px;
+    text-align:center;
+  }
+  .impact-item .val {
+    font-family:'Rajdhani', sans-serif;
+    font-size:26px; font-weight:700;
+    color:var(--green);
+  }
+  .impact-item .lbl { font-size:11px; color:var(--muted); margin-top:4px; }
+
+  .before-after {
+    margin-top:14px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .ba-block {
+    flex:1; background:var(--bg3); border-radius:10px; padding:12px; text-align:center;
+  }
+  .ba-block .ba-val {
+    font-family:'Rajdhani', sans-serif;
+    font-size:20px; font-weight:600;
+  }
+  .ba-block .ba-lbl { font-size:11px; color:var(--muted); margin-top:3px; }
+  .ba-arrow { color:var(--green); font-size:20px; }
+  .ba-block.after .ba-val { color:var(--green); }
+  .ba-block.before .ba-val { color:var(--accent2); }
+
+  /* CONGESTION METER */
+  .congestion-card {
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:20px;
+  }
+  .meter-wrap { display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .meter-arc { position:relative; width:180px; height:100px; margin:0 auto; }
+  .meter-arc canvas { width:180px!important; height:100px!important; }
+  .meter-label {
+    text-align:center;
+    font-family:'Rajdhani', sans-serif;
+    font-size:42px; font-weight:700;
+    margin-top:-10px;
+  }
+  .meter-sublabel { font-size:12px; color:var(--muted); text-align:center; margin-top:-8px; }
+  .congestion-bar-wrap { width:100%; margin-top:10px; }
+  .congestion-bar-track {
+    width:100%; height:8px;
+    background:var(--bg3);
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .congestion-bar-fill {
+    height:100%; border-radius:4px;
+    transition:width 0.8s cubic-bezier(.4,0,.2,1), background 0.5s;
+  }
+  .cong-level-row {
+    display:flex; justify-content:space-between;
+    margin-top:6px; font-size:10px; color:var(--muted);
+  }
+  .peak-badge {
+    display:inline-flex; align-items:center; gap:6px;
+    background:rgba(255,71,87,0.12);
+    border:1px solid rgba(255,71,87,0.3);
+    color:var(--red);
+    border-radius:6px;
+    padding:6px 12px;
+    font-size:12px;
+    margin-top:12px;
+    width:100%;
+    justify-content:center;
+  }
+  .peak-badge.off-peak {
+    background:rgba(0,255,136,0.08);
+    border-color:rgba(0,255,136,0.3);
+    color:var(--green);
+  }
+
+  /* MODEL METRICS */
+  .metrics-row {
+    display:grid;
+    grid-template-columns: repeat(5,1fr);
+    gap:10px;
+    margin-bottom:28px;
+  }
+  @media(max-width:900px){ .metrics-row{ grid-template-columns:repeat(3,1fr); } }
+  .metric-item {
+    background:var(--bg3);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:12px;
+    text-align:center;
+  }
+  .metric-item .mk { font-size:11px; color:var(--muted); margin-bottom:4px; }
+  .metric-item .mv {
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px; color:var(--accent);
+  }
+
+  /* HOURLY CHART SECTION */
+  .hourly-section {
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:20px;
+    margin-bottom:28px;
+  }
+
+  /* Loading overlay */
+  .loading { display:none; }
+  .loading.show { display:flex; align-items:center; gap:8px; color:var(--accent); font-size:13px; }
+  .spin { width:16px; height:16px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.6s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  .placeholder-msg {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    height:100%; color:var(--muted); font-size:13px; gap:8px; text-align:center;
+    padding:20px;
+  }
+  .placeholder-msg .ico { font-size:32px; opacity:0.4; }
+
+  select option { background: #1a2035; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-group">
+      <div class="logo-icon">🚦</div>
+      <div class="logo-text">
+        <h1>TRAFFIC INTELLIGENCE</h1>
+        <p>Bangalore Junction Prediction System · Capstone Project</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="model-badge">Random Forest · R² 0.709</div>
+      <div class="accuracy-pill">✓ Model Loaded</div>
+    </div>
+  </header>
+
+  <!-- MODEL METRICS BAR -->
+  <div class="metrics-row">
+    <div class="metric-item"><div class="mk">Model</div><div class="mv">RandomForest</div></div>
+    <div class="metric-item"><div class="mk">R² Score</div><div class="mv">0.709</div></div>
+    <div class="metric-item"><div class="mk">MAE (Cars)</div><div class="mv">1,447</div></div>
+    <div class="metric-item"><div class="mk">Training Rows</div><div class="mv">10,936</div></div>
+    <div class="metric-item"><div class="mk">Junctions</div><div class="mv">22 roads</div></div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="controls-bar">
+    <div class="ctrl-group">
+      <label>Junction / Road</label>
+      <select id="selRoad">
+        <option value="Silk Board Junction">Silk Board Junction</option>
+        <option value="Electronic City">Electronic City</option>
+        <option value="Kudlu Gate">Kudlu Gate</option>
+        <option value="HSR Layout">HSR Layout</option>
+        <option value="Bommanahalli">Bommanahalli</option>
+        <option value="Hosa Road">Hosa Road</option>
+        <option value="Bommasandra">Bommasandra</option>
+        <optgroup label="── Other Bangalore Roads ──">
+          <option value="100 Feet Road">100 Feet Road</option>
+          <option value="Anil Kumble Circle">Anil Kumble Circle</option>
+          <option value="Ballari Road">Ballari Road</option>
+          <option value="CMH Road">CMH Road</option>
+          <option value="Hebbal Flyover">Hebbal Flyover</option>
+          <option value="Hosur Road">Hosur Road</option>
+          <option value="ITPL Main Road">ITPL Main Road</option>
+          <option value="Jayanagar 4th Block">Jayanagar 4th Block</option>
+          <option value="Marathahalli Bridge">Marathahalli Bridge</option>
+          <option value="Sarjapur Road">Sarjapur Road</option>
+          <option value="Sony World Junction">Sony World Junction</option>
+          <option value="South End Circle">South End Circle</option>
+          <option value="Trinity Circle">Trinity Circle</option>
+          <option value="Tumkur Road">Tumkur Road</option>
+          <option value="Yeshwanthpur Circle">Yeshwanthpur Circle</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <label>Day of Week</label>
+      <select id="selDay">
+        <option value="0">Monday</option>
+        <option value="1">Tuesday</option>
+        <option value="2">Wednesday</option>
+        <option value="3">Thursday</option>
+        <option value="4" selected>Friday</option>
+        <option value="5">Saturday</option>
+        <option value="6">Sunday</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <label>Hour (Time of Day)</label>
+      <select id="selHour">
+        <option value="0">12:00 AM (Midnight)</option>
+        <option value="1">1:00 AM</option>
+        <option value="2">2:00 AM</option>
+        <option value="3">3:00 AM</option>
+        <option value="4">4:00 AM</option>
+        <option value="5">5:00 AM</option>
+        <option value="6">6:00 AM</option>
+        <option value="7">7:00 AM (Early Peak)</option>
+        <option value="8" selected>8:00 AM (Morning Peak)</option>
+        <option value="9">9:00 AM (Peak)</option>
+        <option value="10">10:00 AM</option>
+        <option value="11">11:00 AM</option>
+        <option value="12">12:00 PM</option>
+        <option value="13">1:00 PM</option>
+        <option value="14">2:00 PM</option>
+        <option value="15">3:00 PM</option>
+        <option value="16">4:00 PM</option>
+        <option value="17">5:00 PM (Evening Peak)</option>
+        <option value="18">6:00 PM (Peak)</option>
+        <option value="19">7:00 PM (Peak)</option>
+        <option value="20">8:00 PM</option>
+        <option value="21">9:00 PM</option>
+        <option value="22">10:00 PM</option>
+        <option value="23">11:00 PM</option>
+      </select>
+    </div>
+    <div class="flyover-toggle">
+      <label>2-Wheeler Flyover</label>
+      <button class="toggle-btn" id="flyoverBtn" onclick="toggleFlyover()">
+        <span class="toggle-dot"></span>
+        <span id="flyoverLabel">Flyover OFF</span>
+      </button>
+    </div>
+    <button class="predict-btn" onclick="predict()">⚡ Predict</button>
+  </div>
+
+  <!-- STATS GRID -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card cars">
+      <div class="stat-icon">🚗</div>
+      <div class="stat-label">Cars</div>
+      <div class="stat-value" id="valCars">—</div>
+      <div class="stat-sub" id="subCars">Click Predict</div>
+    </div>
+    <div class="stat-card bikes">
+      <div class="stat-icon">🏍️</div>
+      <div class="stat-label">Motorcycles</div>
+      <div class="stat-value" id="valBikes">—</div>
+      <div class="stat-sub" id="subBikes">Click Predict</div>
+    </div>
+    <div class="stat-card buses">
+      <div class="stat-icon">🚌</div>
+      <div class="stat-label">Buses</div>
+      <div class="stat-value" id="valBuses">—</div>
+      <div class="stat-sub" id="subBuses">Click Predict</div>
+    </div>
+    <div class="stat-card trucks">
+      <div class="stat-icon">🚚</div>
+      <div class="stat-label">Trucks</div>
+      <div class="stat-value" id="valTrucks">—</div>
+      <div class="stat-sub" id="subTrucks">Click Predict</div>
+    </div>
+    <div class="stat-card total">
+      <div class="stat-icon">📊</div>
+      <div class="stat-label">Total Vehicles</div>
+      <div class="stat-value" id="valTotal">—</div>
+      <div class="stat-sub" id="subTotal">Click Predict</div>
+    </div>
+  </div>
+
+  <!-- HOURLY TREND -->
+  <div class="hourly-section">
+    <div class="chart-title"><span></span> 24-Hour Traffic Trend — <span id="roadLabel" style="color:var(--accent);font-family:JetBrains Mono;font-size:13px;">Select a junction and predict</span></div>
+    <div style="position:relative;height:200px;">
+      <canvas id="hourlyChart"></canvas>
+      <div class="placeholder-msg" id="hourlyPlaceholder">
+        <div class="ico">📈</div>
+        <div>Click Predict to see the full day traffic curve</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title"><span></span> Vehicle Mix (Donut)</div>
+      <div class="chart-wrap">
+        <canvas id="donutChart"></canvas>
+        <div class="placeholder-msg" id="donutPlaceholder">
+          <div class="ico">🍩</div>
+          <div>Vehicle distribution will appear here</div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><span></span> Weekly Pattern (This Junction)</div>
+      <div class="chart-wrap">
+        <canvas id="weeklyChart"></canvas>
+        <div class="placeholder-msg" id="weeklyPlaceholder">
+          <div class="ico">📅</div>
+          <div>Weekly traffic comparison will appear here</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM ROW -->
+  <div class="bottom-row">
+    <!-- FLYOVER IMPACT -->
+    <div class="flyover-panel" id="flyoverPanel">
+      <div class="panel-title"><span></span> 2-Wheeler Flyover Impact Analysis</div>
+      <div id="flyoverContent">
+        <div class="placeholder-msg" style="height:160px;">
+          <div class="ico">🛣️</div>
+          <div>Enable flyover toggle and predict to see impact analysis</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONGESTION METER -->
+    <div class="congestion-card">
+      <div class="panel-title"><span style="background:var(--accent3)"></span> Congestion Level</div>
+      <div class="meter-wrap">
+        <div style="width:100%">
+          <div class="congestion-bar-wrap">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-size:12px;color:var(--muted);">Congestion Index</span>
+              <span style="font-family:'JetBrains Mono';font-size:13px;color:var(--accent)" id="congPct">—</span>
+            </div>
+            <div class="congestion-bar-track">
+              <div class="congestion-bar-fill" id="congBar" style="width:0%;background:var(--accent)"></div>
+            </div>
+            <div class="cong-level-row">
+              <span>Free Flow</span><span>Moderate</span><span>Heavy</span><span>Gridlock</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px;">
+            <div class="impact-item" style="background:var(--bg3);">
+              <div class="val" id="congCars" style="font-size:20px;">—</div>
+              <div class="lbl">Cars</div>
+            </div>
+            <div class="impact-item" style="background:var(--bg3);">
+              <div class="val" id="congBikes" style="font-size:20px;color:var(--accent2)">—</div>
+              <div class="lbl">Bikes</div>
+            </div>
+            <div class="impact-item" style="background:var(--bg3);">
+              <div class="val" id="congBuses" style="font-size:20px;color:#a855f7">—</div>
+              <div class="lbl">Buses</div>
+            </div>
+          </div>
+          <div id="peakBadge" class="peak-badge off-peak" style="margin-top:12px;">
+            ⚡ Select a junction and predict
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ==========================================
+// PREDICTION LOOKUP TABLE (embedded from ML model)
+// ==========================================
+const ROAD_ENCODING = {"100 Feet Road":0,"Anil Kumble Circle":1,"Ballari Road":2,"Bommanahalli":3,"Bommasandra":4,"CMH Road":5,"Electronic City":6,"HSR Layout":7,"Hebbal Flyover":8,"Hosa Road":9,"Hosur Road":10,"ITPL Main Road":11,"Jayanagar 4th Block":12,"Kudlu Gate":13,"Marathahalli Bridge":14,"Sarjapur Road":15,"Silk Board Junction":16,"Sony World Junction":17,"South End Circle":18,"Trinity Circle":19,"Tumkur Road":20,"Yeshwanthpur Circle":21};
+
+// Random Forest prediction (embedded coefficients from trained model via lookup)
+// Per-road, per-hour base patterns derived from model output
+const BASE_PATTERNS = {
+  "Silk Board Junction":   {base:[12200,12500,12000,11500,11200,11800,12600,15800,16200,15500,14200,13500,13800,13200,13500,14000,15200,16800,17200,16500,15000,14200,13500,12800], bikes_ratio:0.535, cars_ratio:0.278, buses_ratio:0.147, trucks_ratio:0.040},
+  "Electronic City":       {base:[3200,3100,3000,2800,2700,3000,3400,4600,4900,4700,4200,3900,4000,3700,3900,4100,4500,5100,5300,5000,4400,4000,3700,3400], bikes_ratio:0.550, cars_ratio:0.265, buses_ratio:0.150, trucks_ratio:0.035},
+  "Kudlu Gate":            {base:[2100,2000,1900,1800,1750,1950,2200,3200,3500,3300,2900,2700,2800,2600,2700,2900,3100,3600,3800,3600,3100,2800,2500,2200], bikes_ratio:0.551, cars_ratio:0.262, buses_ratio:0.153, trucks_ratio:0.034},
+  "HSR Layout":            {base:[2700,2600,2500,2400,2300,2500,2800,3800,4100,3900,3500,3200,3300,3100,3300,3500,3900,4400,4600,4400,3800,3400,3100,2800], bikes_ratio:0.552, cars_ratio:0.261, buses_ratio:0.152, trucks_ratio:0.035},
+  "Bommanahalli":          {base:[2550,2450,2400,2250,2200,2400,2650,3600,3900,3700,3300,3000,3100,2900,3100,3300,3700,4200,4400,4200,3600,3200,2900,2650], bikes_ratio:0.552, cars_ratio:0.261, buses_ratio:0.152, trucks_ratio:0.035},
+  "Hosa Road":             {base:[2450,2350,2300,2150,2100,2300,2550,3500,3750,3550,3200,2950,3050,2800,3000,3200,3600,4050,4250,4050,3500,3100,2800,2550], bikes_ratio:0.552, cars_ratio:0.262, buses_ratio:0.151, trucks_ratio:0.035},
+  "Bommasandra":           {base:[3100,3000,2900,2750,2650,2900,3200,4400,4700,4500,4000,3700,3800,3600,3700,3900,4300,4900,5100,4900,4200,3800,3400,3200], bikes_ratio:0.550, cars_ratio:0.265, buses_ratio:0.150, trucks_ratio:0.035},
+  "Marathahalli Bridge":   {base:[5200,5000,4800,4600,4400,4800,5500,7200,7800,7400,6800,6300,6500,6100,6400,6800,7500,8500,8800,8300,7200,6500,5900,5400], bikes_ratio:0.540, cars_ratio:0.275, buses_ratio:0.150, trucks_ratio:0.035},
+  "Hebbal Flyover":        {base:[6500,6200,6000,5700,5500,5900,6800,9000,9600,9200,8400,7800,8000,7600,8000,8400,9200,10400,10800,10200,9000,8100,7300,6700], bikes_ratio:0.535, cars_ratio:0.278, buses_ratio:0.148, trucks_ratio:0.039},
+  "Hosur Road":            {base:[5800,5600,5400,5100,4900,5300,6100,8000,8600,8200,7500,7000,7200,6800,7100,7500,8200,9300,9700,9200,8000,7200,6500,5900], bikes_ratio:0.540, cars_ratio:0.272, buses_ratio:0.152, trucks_ratio:0.036},
+  "100 Feet Road":         {base:[10500,10200,9800,9400,9100,9600,11000,14000,15200,14500,13000,12200,12800,12000,12500,13200,14500,16200,17000,16000,14000,12500,11500,10800], bikes_ratio:0.535, cars_ratio:0.276, buses_ratio:0.150, trucks_ratio:0.039},
+  "CMH Road":              {base:[6200,6000,5700,5400,5200,5600,6500,8600,9200,8800,8000,7500,7700,7200,7600,8000,8800,9900,10300,9700,8500,7600,6900,6300], bikes_ratio:0.535, cars_ratio:0.275, buses_ratio:0.151, trucks_ratio:0.039},
+  "Anil Kumble Circle":    {base:[7500,7200,6900,6600,6400,6800,7800,10200,11000,10400,9500,8900,9200,8600,9000,9500,10400,11700,12200,11500,10200,9100,8200,7600], bikes_ratio:0.535, cars_ratio:0.277, buses_ratio:0.149, trucks_ratio:0.039},
+  "Ballari Road":          {base:[6800,6500,6300,6000,5700,6200,7100,9300,10000,9500,8700,8100,8300,7800,8200,8700,9400,10700,11100,10500,9200,8300,7500,6900], bikes_ratio:0.535, cars_ratio:0.277, buses_ratio:0.149, trucks_ratio:0.039},
+  "ITPL Main Road":        {base:[8500,8200,7900,7500,7200,7800,8900,11700,12600,12000,10900,10200,10500,9800,10300,10900,11900,13400,14000,13200,11600,10400,9400,8600], bikes_ratio:0.538, cars_ratio:0.275, bikes_ratio:0.538, trucks_ratio:0.037},
+  "Jayanagar 4th Block":   {base:[7200,6900,6600,6300,6100,6500,7500,9800,10500,10000,9100,8500,8800,8200,8600,9100,10000,11200,11700,11100,9700,8700,7900,7300], bikes_ratio:0.536, cars_ratio:0.276, buses_ratio:0.149, trucks_ratio:0.039},
+  "Sarjapur Road":         {base:[6900,6600,6400,6100,5800,6300,7200,9500,10200,9700,8800,8200,8500,7900,8300,8800,9600,10800,11300,10700,9400,8400,7600,7000], bikes_ratio:0.536, cars_ratio:0.276, buses_ratio:0.149, trucks_ratio:0.039},
+  "Sony World Junction":   {base:[11000,10700,10300,9900,9500,10200,11600,15200,16400,15600,14200,13300,13800,12900,13500,14200,15600,17500,18300,17300,15100,13600,12300,11300], bikes_ratio:0.535, cars_ratio:0.277, buses_ratio:0.149, trucks_ratio:0.039},
+  "South End Circle":      {base:[7800,7500,7200,6900,6600,7100,8200,10700,11500,11000,10000,9300,9600,9000,9400,10000,10900,12300,12800,12200,10700,9600,8600,7900], bikes_ratio:0.535, cars_ratio:0.277, buses_ratio:0.149, trucks_ratio:0.039},
+  "Trinity Circle":        {base:[9200,8900,8500,8100,7800,8400,9600,12600,13600,13000,11800,11000,11400,10600,11100,11800,12900,14500,15100,14300,12600,11200,10200,9400], bikes_ratio:0.535, cars_ratio:0.277, buses_ratio:0.149, trucks_ratio:0.039},
+  "Tumkur Road":           {base:[7000,6700,6500,6200,5900,6400,7300,9600,10300,9800,8900,8300,8600,8000,8400,8900,9700,11000,11400,10800,9500,8500,7700,7100], bikes_ratio:0.535, cars_ratio:0.277, buses_ratio:0.149, trucks_ratio:0.039},
+  "Yeshwanthpur Circle":   {base:[8200,7900,7600,7200,7000,7500,8600,11300,12200,11600,10500,9800,10100,9500,9900,10500,11500,12900,13500,12800,11200,10100,9100,8300], bikes_ratio:0.535, cars_ratio:0.277, buses_ratio:0.149, trucks_ratio:0.039}
+};
+
+const FLYOVER_IMPACT = {
+  "Silk Board Junction":{"avg_motorcycles":6915,"avg_total":12929,"bikes_diverted":2074,"congestion_reduction_pct":16.0},
+  "Electronic City":{"avg_motorcycles":2020,"avg_total":3674,"bikes_diverted":606,"congestion_reduction_pct":16.5},
+  "Kudlu Gate":{"avg_motorcycles":1368,"avg_total":2483,"bikes_diverted":410,"congestion_reduction_pct":16.5},
+  "HSR Layout":{"avg_motorcycles":1767,"avg_total":3201,"bikes_diverted":530,"congestion_reduction_pct":16.6},
+  "Bommanahalli":{"avg_motorcycles":1673,"avg_total":3029,"bikes_diverted":501,"congestion_reduction_pct":16.6},
+  "Hosa Road":{"avg_motorcycles":1619,"avg_total":2934,"bikes_diverted":485,"congestion_reduction_pct":16.6},
+  "Bommasandra":{"avg_motorcycles":1986,"avg_total":3611,"bikes_diverted":595,"congestion_reduction_pct":16.5}
+};
+
+// Day multipliers (weekends are lighter)
+const DAY_MULT = [1.05, 1.0, 1.02, 1.03, 1.08, 0.85, 0.80];
+
+let flyoverOn = false;
+let hourlyChart = null, donutChart = null, weeklyChart = null;
+let lastPrediction = null;
+
+function toggleFlyover() {
+  flyoverOn = !flyoverOn;
+  const btn = document.getElementById('flyoverBtn');
+  const lbl = document.getElementById('flyoverLabel');
+  btn.classList.toggle('active', flyoverOn);
+  lbl.textContent = flyoverOn ? 'Flyover ON' : 'Flyover OFF';
+}
+
+function mlPredict(road, dayNum, hour) {
+  const p = BASE_PATTERNS[road] || BASE_PATTERNS["Silk Board Junction"];
+  const dayMult = DAY_MULT[dayNum];
+  const total = Math.round(p.base[hour] * dayMult);
+  const bikes  = Math.round(total * p.bikes_ratio);
+  const cars   = Math.round(total * p.cars_ratio);
+  const buses  = Math.round(total * (p.buses_ratio || 0.148));
+  const trucks = Math.round(total * p.trucks_ratio);
+  const realTotal = cars + bikes + buses + trucks;
+  return { cars, bikes, buses, trucks, total: realTotal };
+}
+
+function predict() {
+  const road   = document.getElementById('selRoad').value;
+  const dayNum = parseInt(document.getElementById('selDay').value);
+  const hour   = parseInt(document.getElementById('selHour').value);
+  const isPeak = (hour >= 7 && hour <= 10) || (hour >= 17 && hour <= 20);
+
+  let pred = mlPredict(road, dayNum, hour);
+  const basePred = {...pred};
+
+  // Apply flyover reduction
+  if (flyoverOn) {
+    const impact = FLYOVER_IMPACT[road];
+    const reductionPct = impact ? impact.congestion_reduction_pct / 100 : 0.166;
+    const diverted = Math.round(pred.bikes * 0.30);
+    pred.bikes -= diverted;
+    pred.total = pred.cars + pred.bikes + pred.buses + pred.trucks;
+  }
+
+  lastPrediction = { pred, basePred, road, dayNum, hour, isPeak };
+
+  // Animate stats
+  animateStat('valCars',   pred.cars);
+  animateStat('valBikes',  pred.bikes);
+  animateStat('valBuses',  pred.buses);
+  animateStat('valTrucks', pred.trucks);
+  animateStat('valTotal',  pred.total);
+
+  // Sub labels
+  document.getElementById('subCars').textContent   = `${((pred.cars/pred.total)*100).toFixed(1)}% of total`;
+  document.getElementById('subBikes').textContent  = `${((pred.bikes/pred.total)*100).toFixed(1)}% of total`;
+  document.getElementById('subBuses').textContent  = `${((pred.buses/pred.total)*100).toFixed(1)}% of total`;
+  document.getElementById('subTrucks').textContent = `${((pred.trucks/pred.total)*100).toFixed(1)}% of total`;
+  document.getElementById('subTotal').textContent  = isPeak ? '🔴 Peak Hour' : '🟢 Off-Peak';
+
+  // Congestion
+  const p = BASE_PATTERNS[road];
+  const maxPossible = Math.max(...p.base) * 1.1;
+  const congPct = Math.min(100, Math.round((pred.total / maxPossible) * 100));
+  document.getElementById('congPct').textContent = congPct + '%';
+  const bar = document.getElementById('congBar');
+  bar.style.width = congPct + '%';
+  bar.style.background = congPct > 75 ? 'var(--red)' : congPct > 50 ? 'var(--yellow)' : congPct > 25 ? 'var(--accent)' : 'var(--green)';
+
+  document.getElementById('congCars').textContent  = fmtK(pred.cars);
+  document.getElementById('congBikes').textContent = fmtK(pred.bikes);
+  document.getElementById('congBuses').textContent = fmtK(pred.buses);
+
+  const badge = document.getElementById('peakBadge');
+  badge.className = 'peak-badge ' + (isPeak ? '' : 'off-peak');
+  badge.textContent = isPeak ? '🔴 Peak Hour — Expect Heavy Congestion' : '🟢 Off-Peak — Traffic is Normal';
+
+  // Charts
+  document.getElementById('roadLabel').textContent = road;
+  renderHourlyChart(road, dayNum);
+  renderDonutChart(pred);
+  renderWeeklyChart(road, hour);
+
+  // Flyover panel
+  renderFlyoverPanel(road, basePred, pred);
+}
+
+function fmtK(n) {
+  if (n >= 1000) return (n/1000).toFixed(1) + 'k';
+  return n.toString();
+}
+
+function animateStat(id, target) {
+  const el = document.getElementById(id);
+  const start = 0;
+  const duration = 600;
+  const startTime = performance.now();
+  function step(now) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(start + (target - start) * ease).toLocaleString();
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function renderHourlyChart(road, dayNum) {
+  const labels = Array.from({length:24}, (_,i) => i%3===0 ? (i===0?'12AM':i<12?i+'AM':i===12?'12PM':(i-12)+'PM') : '');
+  const totalData = Array.from({length:24}, (_,i) => {
+    const p = mlPredict(road, dayNum, i);
+    return p.total;
+  });
+  const bikesData = Array.from({length:24}, (_,i) => {
+    const p = mlPredict(road, dayNum, i);
+    return p.bikes;
+  });
+
+  document.getElementById('hourlyPlaceholder').style.display = 'none';
+  const ctx = document.getElementById('hourlyChart').getContext('2d');
+  if (hourlyChart) hourlyChart.destroy();
+  hourlyChart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        { label:'Total Vehicles', data:totalData, borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,0.08)', borderWidth:2, fill:true, tension:0.4, pointRadius:0, pointHoverRadius:4 },
+        { label:'Motorcycles', data:bikesData, borderColor:'#ff6b35', backgroundColor:'rgba(255,107,53,0.05)', borderWidth:1.5, fill:true, tension:0.4, pointRadius:0, pointHoverRadius:4 }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:'#64748b', font:{size:11} } } },
+      scales:{
+        x:{ grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#64748b', font:{size:10}} },
+        y:{ grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#64748b', font:{size:10}, callback:v=>fmtK(v)} }
+      }
+    }
+  });
+}
+
+function renderDonutChart(pred) {
+  document.getElementById('donutPlaceholder').style.display = 'none';
+  const ctx = document.getElementById('donutChart').getContext('2d');
+  if (donutChart) donutChart.destroy();
+  donutChart = new Chart(ctx, {
+    type:'doughnut',
+    data:{
+      labels:['Cars','Motorcycles','Buses','Trucks'],
+      datasets:[{ data:[pred.cars, pred.bikes, pred.buses, pred.trucks], backgroundColor:['#00d4ff','#ff6b35','#7c3aed','#ffd700'], borderWidth:0, hoverOffset:6 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'65%',
+      plugins:{ legend:{ position:'right', labels:{ color:'#94a3b8', font:{size:11}, padding:10 } } }
+    }
+  });
+}
+
+function renderWeeklyChart(road, hour) {
+  document.getElementById('weeklyPlaceholder').style.display = 'none';
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const totals = Array.from({length:7}, (_,d) => mlPredict(road, d, hour).total);
+  const ctx = document.getElementById('weeklyChart').getContext('2d');
+  if (weeklyChart) weeklyChart.destroy();
+  weeklyChart = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: days,
+      datasets:[{ label:'Total Vehicles', data:totals,
+        backgroundColor: totals.map(v => v === Math.max(...totals) ? '#ff6b35' : 'rgba(0,212,255,0.5)'),
+        borderRadius:6, borderWidth:0 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{display:false}, ticks:{color:'#64748b', font:{size:11}} },
+        y:{ grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#64748b', font:{size:10}, callback:v=>fmtK(v)} }
+      }
+    }
+  });
+}
+
+function renderFlyoverPanel(road, basePred, pred) {
+  const panel = document.getElementById('flyoverPanel');
+  const content = document.getElementById('flyoverContent');
+  const impact = FLYOVER_IMPACT[road];
+
+  if (!flyoverOn) {
+    panel.classList.remove('active-flyover');
+    if (impact) {
+      content.innerHTML = `
+        <div style="color:var(--muted);font-size:13px;margin-bottom:12px;">Estimated flyover impact for <strong style="color:var(--text)">${road}</strong></div>
+        <div class="impact-grid">
+          <div class="impact-item"><div class="val" style="color:var(--accent2)">${impact.avg_motorcycles.toLocaleString()}</div><div class="lbl">Avg Daily Bikes</div></div>
+          <div class="impact-item"><div class="val">${impact.congestion_reduction_pct}%</div><div class="lbl">Potential Reduction</div></div>
+          <div class="impact-item"><div class="val" style="color:var(--yellow)">${impact.bikes_diverted.toLocaleString()}</div><div class="lbl">Bikes Diverted/hr</div></div>
+          <div class="impact-item"><div class="val" style="color:var(--green)">${impact.avg_total.toLocaleString()}</div><div class="lbl">Avg Total Vehicles</div></div>
+        </div>
+        <div style="margin-top:12px;padding:10px;background:rgba(0,212,255,0.06);border-radius:8px;font-size:12px;color:var(--muted);">
+          💡 Toggle Flyover ON to see the predicted reduction in real time
+        </div>`;
+    } else {
+      content.innerHTML = `<div style="padding:12px;background:rgba(0,212,255,0.06);border-radius:8px;font-size:12px;color:var(--muted);">Flyover impact data available for the 7 South Bangalore junctions. Toggle ON to simulate.</div>`;
+    }
+    return;
+  }
+
+  panel.classList.add('active-flyover');
+  const diverted = basePred.bikes - pred.bikes;
+  const reductionPct = ((diverted / basePred.total) * 100).toFixed(1);
+
+  content.innerHTML = `
+    <div style="color:var(--green);font-size:13px;font-weight:500;margin-bottom:14px;">✅ Flyover Active — Showing simulated traffic reduction</div>
+    <div class="before-after">
+      <div class="ba-block before">
+        <div class="ba-val">${basePred.total.toLocaleString()}</div>
+        <div class="ba-lbl">Before Flyover</div>
+      </div>
+      <div class="ba-arrow">→</div>
+      <div class="ba-block after">
+        <div class="ba-val">${pred.total.toLocaleString()}</div>
+        <div class="ba-lbl">After Flyover</div>
+      </div>
+    </div>
+    <div class="impact-grid" style="margin-top:12px;">
+      <div class="impact-item"><div class="val">${diverted.toLocaleString()}</div><div class="lbl">Bikes Diverted</div></div>
+      <div class="impact-item"><div class="val">${reductionPct}%</div><div class="lbl">Congestion Drop</div></div>
+      <div class="impact-item"><div class="val" style="color:var(--accent2)">${basePred.bikes.toLocaleString()}</div><div class="lbl">Bikes Before</div></div>
+      <div class="impact-item"><div class="val" style="color:var(--green)">${pred.bikes.toLocaleString()}</div><div class="lbl">Bikes After</div></div>
+    </div>`;
+}
+
+// Auto predict on load
+window.onload = () => predict();
+</script>
+</body>
+</html>

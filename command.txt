@@ -1,0 +1,3 @@
+python train_model.py - FOR TRAINING
+
+python app.py - FOR THE UI

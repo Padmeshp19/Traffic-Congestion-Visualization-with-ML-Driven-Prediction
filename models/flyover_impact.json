@@ -1,0 +1,44 @@
+{
+  "Silk Board Junction": {
+    "avg_motorcycles": 6915,
+    "avg_total": 12929,
+    "bikes_diverted": 2074,
+    "congestion_reduction_pct": 16.0
+  },
+  "Electronic City": {
+    "avg_motorcycles": 2020,
+    "avg_total": 3674,
+    "bikes_diverted": 606,
+    "congestion_reduction_pct": 16.5
+  },
+  "Kudlu Gate": {
+    "avg_motorcycles": 1368,
+    "avg_total": 2483,
+    "bikes_diverted": 410,
+    "congestion_reduction_pct": 16.5
+  },
+  "HSR Layout": {
+    "avg_motorcycles": 1767,
+    "avg_total": 3201,
+    "bikes_diverted": 530,
+    "congestion_reduction_pct": 16.6
+  },
+  "Bommanahalli": {
+    "avg_motorcycles": 1673,
+    "avg_total": 3029,
+    "bikes_diverted": 501,
+    "congestion_reduction_pct": 16.6
+  },
+  "Hosa Road": {
+    "avg_motorcycles": 1619,
+    "avg_total": 2934,
+    "bikes_diverted": 485,
+    "congestion_reduction_pct": 16.6
+  },
+  "Bommasandra": {
+    "avg_motorcycles": 1986,
+    "avg_total": 3611,
+    "bikes_diverted": 595,
+    "congestion_reduction_pct": 16.5
+  }
+}
