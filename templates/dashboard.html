@@ -416,6 +416,62 @@
   .placeholder-msg .ico { font-size:32px; opacity:0.4; }
 
   select option { background: #1a2035; }
+
+  /* model selector + comparison */
+  :root{--model:#00d4ff}
+  body[data-model=gbm]{--model:#b388ff}
+  .logo-icon{background:linear-gradient(135deg,var(--model),var(--accent3))}
+  .logo-text h1{background:linear-gradient(90deg,var(--model),#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .model-badge{color:var(--model)}
+  .metric-item .mv{color:var(--model)}
+  .predict-btn{background:linear-gradient(135deg,var(--model),var(--accent3))}
+  .seg{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--card)}
+  .seg button{background:none;border:0;color:var(--muted);padding:8px 16px;font:500 13px 'Inter',sans-serif;cursor:pointer;transition:all .25s}
+  .seg button+button{border-left:1px solid var(--border)}
+  .seg button.on{background:var(--model);color:#0a0d14;font-weight:600}
+  #cmpLine{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);margin:-14px 0 24px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px}
+  #cmpLine b{color:var(--model);font-weight:500}
+  #err{display:none;background:rgba(255,71,87,.1);border:1px solid var(--red);color:var(--red);border-radius:10px;padding:10px 14px;margin-bottom:20px;font-size:13px}
+  table.cmp{width:100%;border-collapse:collapse;font-size:13px}
+  table.cmp th,table.cmp td{padding:9px 8px;text-align:right;border-bottom:1px solid var(--border)}
+  table.cmp th:first-child,table.cmp td:first-child{text-align:left}
+  table.cmp th{color:var(--muted);font-weight:400;font-size:11px;text-transform:uppercase;letter-spacing:1px}
+  table.cmp td{font-family:'JetBrains Mono',monospace}
+  table.cmp td.sel{color:var(--model);background:rgba(255,255,255,.03)}
+  table.cmp td.up{color:var(--green)} table.cmp td.down{color:var(--red)}
+  .cmp-note{font-size:12px;color:var(--muted);margin-top:12px}
+
+  /* upgrades */
+  header{flex-wrap:wrap;gap:14px}
+  .header-right{flex-wrap:wrap}
+  .controls-bar{position:sticky;top:0;z-index:20;backdrop-filter:blur(12px);background:rgba(22,28,46,.92)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  #statsGrid{transition:opacity .2s}
+  #bestTime{font-size:13px;color:var(--muted);margin:-12px 0 24px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px}
+  #bestTime b{color:var(--green);font-weight:600}
+  .heat-wrap{overflow-x:auto}
+  .heat{display:grid;grid-template-columns:38px repeat(24,minmax(20px,1fr));gap:3px;min-width:600px}
+  .heat .hl,.heat .dl{font:10px 'JetBrains Mono',monospace;color:var(--muted);align-self:center}
+  .hc{height:26px;border:0;border-radius:4px;cursor:pointer;padding:0;opacity:.85;transition:transform .15s,opacity .15s}
+  .hc:hover{transform:scale(1.15);opacity:1}
+  .hc.sel{outline:2px solid #fff;outline-offset:1px;opacity:1}
+  .heat-key{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:var(--muted)}
+  .heat-key i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+  .heat .hl{font-size:11px;color:#94a3b8;border-left:1px solid var(--border);padding-left:4px}
+  .heat .pk{font:10px 'JetBrains Mono',monospace;text-align:center;color:var(--red);background:rgba(255,71,87,.12);border-radius:4px;padding:1px 0;white-space:nowrap}
+  .heat{min-width:0} .heat-wrap{padding:3px}
+  @media(max-width:820px){.heat{min-width:640px}}
+  .heat .hl{border-left:none;padding-left:0;text-align:center;font-size:10px;opacity:.6}
+  .heat .hl.major{opacity:1;font-weight:600}
+  .heat .hl.pk{color:var(--red)}
+  .hc{position:relative;opacity:1;transition:filter .12s}
+  .hc:hover{transform:none;filter:brightness(1.25)}
+  .hc.best::after{content:'';position:absolute;width:5px;height:5px;border-radius:50%;background:#0a0d14;top:50%;left:50%;transform:translate(-50%,-50%)}
+  .heat .dl.on{color:var(--text);font-weight:500}
+  #heatTip{position:fixed;display:none;pointer-events:none;z-index:50;background:#0f1420;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  #heatTip b{font-family:'Rajdhani',sans-serif;font-size:14px;letter-spacing:.5px}
+  .grad{display:inline-block;width:130px;height:8px;border-radius:4px;background:linear-gradient(90deg,#00e08a,#ffd21f,#ff4757);vertical-align:middle;margin:0 6px}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -431,17 +487,18 @@
       </div>
     </div>
     <div class="header-right">
-      <div class="model-badge">Random Forest · R² 0.709</div>
-      <div class="accuracy-pill">✓ Model Loaded</div>
+      <div class="seg" role="group" aria-label="Prediction model"><button id="m-rf" class="on" onclick="setModel('rf')">Random Forest</button><button id="m-gbm" onclick="setModel('gbm')">Gradient Boosting</button></div>
+      <div class="model-badge" id="modelBadge">R² …</div>
+      <div class="accuracy-pill" id="loadPill">✓ Model Loaded</div>
     </div>
   </header>
 
   <!-- MODEL METRICS BAR -->
   <div class="metrics-row">
-    <div class="metric-item"><div class="mk">Model</div><div class="mv">RandomForest</div></div>
-    <div class="metric-item"><div class="mk">R² Score</div><div class="mv">0.709</div></div>
-    <div class="metric-item"><div class="mk">MAE (Cars)</div><div class="mv">1,447</div></div>
-    <div class="metric-item"><div class="mk">Training Rows</div><div class="mv">10,936</div></div>
+    <div class="metric-item"><div class="mk">Model</div><div class="mv" id="mName">RandomForest</div></div>
+    <div class="metric-item"><div class="mk">R² (Total)</div><div class="mv" id="mR2">—</div></div>
+    <div class="metric-item"><div class="mk">MAE (Cars)</div><div class="mv" id="mMae">—</div></div>
+    <div class="metric-item"><div class="mk">Train / Test Rows</div><div class="mv" id="mRows">—</div></div>
     <div class="metric-item"><div class="mk">Junctions</div><div class="mv">22 roads</div></div>
   </div>
 
@@ -524,55 +581,66 @@
         <span id="flyoverLabel">Flyover OFF</span>
       </button>
     </div>
-    <button class="predict-btn" onclick="predict()">⚡ Predict</button>
   </div>
 
+  <div id="err" role="alert"></div>
   <!-- STATS GRID -->
   <div class="stats-grid" id="statsGrid">
     <div class="stat-card cars">
       <div class="stat-icon">🚗</div>
       <div class="stat-label">Cars</div>
       <div class="stat-value" id="valCars">—</div>
-      <div class="stat-sub" id="subCars">Click Predict</div>
+      <div class="stat-sub" id="subCars">Loading…</div>
     </div>
     <div class="stat-card bikes">
       <div class="stat-icon">🏍️</div>
       <div class="stat-label">Motorcycles</div>
       <div class="stat-value" id="valBikes">—</div>
-      <div class="stat-sub" id="subBikes">Click Predict</div>
+      <div class="stat-sub" id="subBikes">Loading…</div>
     </div>
     <div class="stat-card buses">
       <div class="stat-icon">🚌</div>
       <div class="stat-label">Buses</div>
       <div class="stat-value" id="valBuses">—</div>
-      <div class="stat-sub" id="subBuses">Click Predict</div>
+      <div class="stat-sub" id="subBuses">Loading…</div>
     </div>
     <div class="stat-card trucks">
       <div class="stat-icon">🚚</div>
       <div class="stat-label">Trucks</div>
       <div class="stat-value" id="valTrucks">—</div>
-      <div class="stat-sub" id="subTrucks">Click Predict</div>
+      <div class="stat-sub" id="subTrucks">Loading…</div>
     </div>
     <div class="stat-card total">
       <div class="stat-icon">📊</div>
       <div class="stat-label">Total Vehicles</div>
       <div class="stat-value" id="valTotal">—</div>
-      <div class="stat-sub" id="subTotal">Click Predict</div>
+      <div class="stat-sub" id="subTotal">Loading…</div>
     </div>
   </div>
 
+  <div id="cmpLine"></div>
+  <div id="bestTime"></div>
+
   <!-- HOURLY TREND -->
   <div class="hourly-section">
-    <div class="chart-title"><span></span> 24-Hour Traffic Trend — <span id="roadLabel" style="color:var(--accent);font-family:JetBrains Mono;font-size:13px;">Select a junction and predict</span></div>
-    <div style="position:relative;height:200px;">
+    <div class="chart-title"><span></span> 24-Hour Traffic Trend — <span id="roadLabel" style="color:var(--accent);font-family:JetBrains Mono;font-size:13px;">Loading…</span></div>
+    <div style="position:relative;height:240px;">
       <canvas id="hourlyChart"></canvas>
       <div class="placeholder-msg" id="hourlyPlaceholder">
         <div class="ico">📈</div>
-        <div>Click Predict to see the full day traffic curve</div>
+        <div>Loading the full-day traffic curve…</div>
       </div>
     </div>
   </div>
 
+  <!-- WEEK HEATMAP -->
+  <div class="hourly-section">
+    <div class="chart-title"><span></span> Week Heatmap — click any hour to inspect it</div>
+    <div class="seg" id="heatMetric" role="group" aria-label="Heatmap vehicle type" style="margin-bottom:14px"><button data-i="4" class="on">Total</button><button data-i="0">Cars</button><button data-i="1">Motorcycles</button><button data-i="2">Buses</button><button data-i="3">Trucks</button></div>
+    <div id="heatTip"></div>
+    <div class="heat-wrap"><div class="heat" id="heat"></div></div>
+    <div class="heat-key" id="heatKey"></div>
+  </div>
   <!-- CHARTS ROW -->
   <div class="charts-row">
     <div class="chart-card">
@@ -586,7 +654,7 @@
       </div>
     </div>
     <div class="chart-card">
-      <div class="chart-title"><span></span> Weekly Pattern (This Junction)</div>
+      <div class="chart-title"><span></span> Weekly Pattern at Selected Hour (selected day in orange)</div>
       <div class="chart-wrap">
         <canvas id="weeklyChart"></canvas>
         <div class="placeholder-msg" id="weeklyPlaceholder">
@@ -597,6 +665,13 @@
     </div>
   </div>
 
+  <!-- MODEL COMPARISON -->
+  <div class="hourly-section">
+    <div class="chart-title"><span></span> Model Comparison — Random Forest vs Gradient Boosting (held-out test set)</div>
+    <table class="cmp"><thead><tr><th>Target</th><th>RF R²</th><th>GBM R²</th><th>RF MAE</th><th>GBM MAE</th><th>R² gain (GBM)</th></tr></thead><tbody id="cmpBody"></tbody></table>
+    <div class="cmp-note" id="cmpNote"></div>
+  </div>
+
   <!-- BOTTOM ROW -->
   <div class="bottom-row">
     <!-- FLYOVER IMPACT -->
@@ -605,7 +680,7 @@
       <div id="flyoverContent">
         <div class="placeholder-msg" style="height:160px;">
           <div class="ico">🛣️</div>
-          <div>Enable flyover toggle and predict to see impact analysis</div>
+          <div>Turn on the flyover toggle to see the impact</div>
         </div>
       </div>
     </div>
@@ -642,7 +717,7 @@
             </div>
           </div>
           <div id="peakBadge" class="peak-badge off-peak" style="margin-top:12px;">
-            ⚡ Select a junction and predict
+            ⚡ Loading…
           </div>
         </div>
       </div>
@@ -652,140 +727,160 @@
 </div>
 
 <script>
-// ==========================================
-// PREDICTION LOOKUP TABLE (embedded from ML model)
-// ==========================================
-const ROAD_ENCODING = {"100 Feet Road":0,"Anil Kumble Circle":1,"Ballari Road":2,"Bommanahalli":3,"Bommasandra":4,"CMH Road":5,"Electronic City":6,"HSR Layout":7,"Hebbal Flyover":8,"Hosa Road":9,"Hosur Road":10,"ITPL Main Road":11,"Jayanagar 4th Block":12,"Kudlu Gate":13,"Marathahalli Bridge":14,"Sarjapur Road":15,"Silk Board Junction":16,"Sony World Junction":17,"South End Circle":18,"Trinity Circle":19,"Tumkur Road":20,"Yeshwanthpur Circle":21};
 
-// Random Forest prediction (embedded coefficients from trained model via lookup)
-// Per-road, per-hour base patterns derived from model output
-const BASE_PATTERNS = {
-  "Silk Board Junction":   {base:[12200,12500,12000,11500,11200,11800,12600,15800,16200,15500,14200,13500,13800,13200,13500,14000,15200,16800,17200,16500,15000,14200,13500,12800], bikes_ratio:0.535, cars_ratio:0.278, buses_ratio:0.147, trucks_ratio:0.040},
-  "Electronic City":       {base:[3200,3100,3000,2800,2700,3000,3400,4600,4900,4700,4200,3900,4000,3700,3900,4100,4500,5100,5300,5000,4400,4000,3700,3400], bikes_ratio:0.550, cars_ratio:0.265, buses_ratio:0.150, trucks_ratio:0.035},
-  "Kudlu Gate":            {base:[2100,2000,1900,1800,1750,1950,2200,3200,3500,3300,2900,2700,2800,2600,2700,2900,3100,3600,3800,3600,3100,2800,2500,2200], bikes_ratio:0.551, cars_ratio:0.262, buses_ratio:0.153, trucks_ratio:0.034},
-  "HSR Layout":            {base:[2700,2600,2500,2400,2300,2500,2800,3800,4100,3900,3500,3200,3300,3100,3300,3500,3900,4400,4600,4400,3800,3400,3100,2800], bikes_ratio:0.552, cars_ratio:0.261, buses_ratio:0.152, trucks_ratio:0.035},
-  "Bommanahalli":          {base:[2550,2450,2400,2250,2200,2400,2650,3600,3900,3700,3300,3000,3100,2900,3100,3300,3700,4200,4400,4200,3600,3200,2900,2650], bikes_ratio:0.552, cars_ratio:0.261, buses_ratio:0.152, trucks_ratio:0.035},
-  "Hosa Road":             {base:[2450,2350,2300,2150,2100,2300,2550,3500,3750,3550,3200,2950,3050,2800,3000,3200,3600,4050,4250,4050,3500,3100,2800,2550], bikes_ratio:0.552, cars_ratio:0.262, buses_ratio:0.151, trucks_ratio:0.035},
-  "Bommasandra":           {base:[3100,3000,2900,2750,2650,2900,3200,4400,4700,4500,4000,3700,3800,3600,3700,3900,4300,4900,5100,4900,4200,3800,3400,3200], bikes_ratio:0.550, cars_ratio:0.265, buses_ratio:0.150, trucks_ratio:0.035},
-  "Marathahalli Bridge":   {base:[5200,5000,4800,4600,4400,4800,5500,7200,7800,7400,6800,6300,6500,6100,6400,6800,7500,8500,8800,8300,7200,6500,5900,5400], bikes_ratio:0.540, cars_ratio:0.275, buses_ratio:0.150, trucks_ratio:0.035},
-  "Hebbal Flyover":        {base:[6500,6200,6000,5700,5500,5900,6800,9000,9600,9200,8400,7800,8000,7600,8000,8400,9200,10400,10800,10200,9000,8100,7300,6700], bikes_ratio:0.535, cars_ratio:0.278, buses_ratio:0.148, trucks_ratio:0.039},
-  "Hosur Road":            {base:[5800,5600,5400,5100,4900,5300,6100,8000,8600,8200,7500,7000,7200,6800,7100,7500,8200,9300,9700,9200,8000,7200,6500,5900], bikes_ratio:0.540, cars_ratio:0.272, buses_ratio:0.152, trucks_ratio:0.036},
-  "100 Feet Road":         {base:[10500,10200,9800,9400,9100,9600,11000,14000,15200,14500,13000,12200,12800,12000,12500,13200,14500,16200,17000,16000,14000,12500,11500,10800], bikes_ratio:0.535, cars_ratio:0.276, buses_ratio:0.150, trucks_ratio:0.039},
-  "CMH Road":              {base:[6200,6000,5700,5400,5200,5600,6500,8600,9200,8800,8000,7500,7700,7200,7600,8000,8800,9900,10300,9700,8500,7600,6900,6300], bikes_ratio:0.535, cars_ratio:0.275, buses_ratio:0.151, trucks_ratio:0.039},
-  "Anil Kumble Circle":    {base:[7500,7200,6900,6600,6400,6800,7800,10200,11000,10400,9500,8900,9200,8600,9000,9500,10400,11700,12200,11500,10200,9100,8200,7600], bikes_ratio:0.535, cars_ratio:0.277, buses_ratio:0.149, trucks_ratio:0.039},
-  "Ballari Road":          {base:[6800,6500,6300,6000,5700,6200,7100,9300,10000,9500,8700,8100,8300,7800,8200,8700,9400,10700,11100,10500,9200,8300,7500,6900], bikes_ratio:0.535, cars_ratio:0.277, buses_ratio:0.149, trucks_ratio:0.039},
-  "ITPL Main Road":        {base:[8500,8200,7900,7500,7200,7800,8900,11700,12600,12000,10900,10200,10500,9800,10300,10900,11900,13400,14000,13200,11600,10400,9400,8600], bikes_ratio:0.538, cars_ratio:0.275, bikes_ratio:0.538, trucks_ratio:0.037},
-  "Jayanagar 4th Block":   {base:[7200,6900,6600,6300,6100,6500,7500,9800,10500,10000,9100,8500,8800,8200,8600,9100,10000,11200,11700,11100,9700,8700,7900,7300], bikes_ratio:0.536, cars_ratio:0.276, buses_ratio:0.149, trucks_ratio:0.039},
-  "Sarjapur Road":         {base:[6900,6600,6400,6100,5800,6300,7200,9500,10200,9700,8800,8200,8500,7900,8300,8800,9600,10800,11300,10700,9400,8400,7600,7000], bikes_ratio:0.536, cars_ratio:0.276, buses_ratio:0.149, trucks_ratio:0.039},
-  "Sony World Junction":   {base:[11000,10700,10300,9900,9500,10200,11600,15200,16400,15600,14200,13300,13800,12900,13500,14200,15600,17500,18300,17300,15100,13600,12300,11300], bikes_ratio:0.535, cars_ratio:0.277, buses_ratio:0.149, trucks_ratio:0.039},
-  "South End Circle":      {base:[7800,7500,7200,6900,6600,7100,8200,10700,11500,11000,10000,9300,9600,9000,9400,10000,10900,12300,12800,12200,10700,9600,8600,7900], bikes_ratio:0.535, cars_ratio:0.277, buses_ratio:0.149, trucks_ratio:0.039},
-  "Trinity Circle":        {base:[9200,8900,8500,8100,7800,8400,9600,12600,13600,13000,11800,11000,11400,10600,11100,11800,12900,14500,15100,14300,12600,11200,10200,9400], bikes_ratio:0.535, cars_ratio:0.277, buses_ratio:0.149, trucks_ratio:0.039},
-  "Tumkur Road":           {base:[7000,6700,6500,6200,5900,6400,7300,9600,10300,9800,8900,8300,8600,8000,8400,8900,9700,11000,11400,10800,9500,8500,7700,7100], bikes_ratio:0.535, cars_ratio:0.277, buses_ratio:0.149, trucks_ratio:0.039},
-  "Yeshwanthpur Circle":   {base:[8200,7900,7600,7200,7000,7500,8600,11300,12200,11600,10500,9800,10100,9500,9900,10500,11500,12900,13500,12800,11200,10100,9100,8300], bikes_ratio:0.535, cars_ratio:0.277, buses_ratio:0.149, trucks_ratio:0.039}
-};
-
-const FLYOVER_IMPACT = {
-  "Silk Board Junction":{"avg_motorcycles":6915,"avg_total":12929,"bikes_diverted":2074,"congestion_reduction_pct":16.0},
-  "Electronic City":{"avg_motorcycles":2020,"avg_total":3674,"bikes_diverted":606,"congestion_reduction_pct":16.5},
-  "Kudlu Gate":{"avg_motorcycles":1368,"avg_total":2483,"bikes_diverted":410,"congestion_reduction_pct":16.5},
-  "HSR Layout":{"avg_motorcycles":1767,"avg_total":3201,"bikes_diverted":530,"congestion_reduction_pct":16.6},
-  "Bommanahalli":{"avg_motorcycles":1673,"avg_total":3029,"bikes_diverted":501,"congestion_reduction_pct":16.6},
-  "Hosa Road":{"avg_motorcycles":1619,"avg_total":2934,"bikes_diverted":485,"congestion_reduction_pct":16.6},
-  "Bommasandra":{"avg_motorcycles":1986,"avg_total":3611,"bikes_diverted":595,"congestion_reduction_pct":16.5}
-};
-
-// Day multipliers (weekends are lighter)
-const DAY_MULT = [1.05, 1.0, 1.02, 1.03, 1.08, 0.85, 0.80];
-
-let flyoverOn = false;
+const NAMES  = {rf:'Random Forest', gbm:'Gradient Boosting'};
+const COLORS = {rf:'#00d4ff', gbm:'#b388ff'};
+const TARGETS = [['Cars','Cars'],['Motorcycles','Motorcycles'],['Buses','Buses'],['Trucks','Trucks'],['Total_Vehicles','Total vehicles']];
+let model = 'rf', flyoverOn = false, FLYOVER_IMPACT = {}, metrics = {}, cache = {}, reqId = 0;
 let hourlyChart = null, donutChart = null, weeklyChart = null;
-let lastPrediction = null;
+const $ = id => document.getElementById(id);
+const other = () => model === 'rf' ? 'gbm' : 'rf';
+const at = (g, d, h) => { const a = g[d][h]; return {cars:a[0], bikes:a[1], buses:a[2], trucks:a[3], total:a[4]}; };
+
+// One request returns the whole week (7x24) for a road+model; cached so switching is instant.
+function getGrid(m, road, fly) {
+  const key = `${m}|${road}|${fly?1:0}`;
+  if (!cache[key]) {
+    cache[key] = fetch(`/predict-grid?model=${m}&road=${encodeURIComponent(road)}&flyover=${fly?1:0}`)
+      .then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Request failed'); return j.grid; })
+      .catch(e => { delete cache[key]; throw e; });
+  }
+  return cache[key];
+}
+
+function setModel(m) {
+  model = m;
+  document.body.dataset.model = m;
+  $('m-rf').classList.toggle('on', m === 'rf');
+  $('m-gbm').classList.toggle('on', m === 'gbm');
+  updateMetricsUI();
+  predict();
+}
 
 function toggleFlyover() {
   flyoverOn = !flyoverOn;
-  const btn = document.getElementById('flyoverBtn');
-  const lbl = document.getElementById('flyoverLabel');
-  btn.classList.toggle('active', flyoverOn);
-  lbl.textContent = flyoverOn ? 'Flyover ON' : 'Flyover OFF';
+  $('flyoverBtn').classList.toggle('active', flyoverOn);
+  $('flyoverLabel').textContent = flyoverOn ? 'Flyover ON' : 'Flyover OFF';
+  predict();
 }
 
-function mlPredict(road, dayNum, hour) {
-  const p = BASE_PATTERNS[road] || BASE_PATTERNS["Silk Board Junction"];
-  const dayMult = DAY_MULT[dayNum];
-  const total = Math.round(p.base[hour] * dayMult);
-  const bikes  = Math.round(total * p.bikes_ratio);
-  const cars   = Math.round(total * p.cars_ratio);
-  const buses  = Math.round(total * (p.buses_ratio || 0.148));
-  const trucks = Math.round(total * p.trucks_ratio);
-  const realTotal = cars + bikes + buses + trucks;
-  return { cars, bikes, buses, trucks, total: realTotal };
-}
-
-function predict() {
-  const road   = document.getElementById('selRoad').value;
-  const dayNum = parseInt(document.getElementById('selDay').value);
-  const hour   = parseInt(document.getElementById('selHour').value);
-  const isPeak = (hour >= 7 && hour <= 10) || (hour >= 17 && hour <= 20);
-
-  let pred = mlPredict(road, dayNum, hour);
-  const basePred = {...pred};
-
-  // Apply flyover reduction
-  if (flyoverOn) {
-    const impact = FLYOVER_IMPACT[road];
-    const reductionPct = impact ? impact.congestion_reduction_pct / 100 : 0.166;
-    const diverted = Math.round(pred.bikes * 0.30);
-    pred.bikes -= diverted;
-    pred.total = pred.cars + pred.bikes + pred.buses + pred.trucks;
+function updateMetricsUI() {
+  const m = metrics[model];
+  if (!m || !metrics.rf || !metrics.gbm) {
+    $('modelBadge').textContent = NAMES[model];
+    $('cmpNote').textContent = 'Run train_model.py to generate model_metrics.json.';
+    return;
   }
+  const r2 = m.Total_Vehicles.r2;
+  $('mName').textContent = NAMES[model];
+  $('mR2').textContent   = r2.toFixed(3);
+  $('mMae').textContent  = Number(m.Cars.mae).toLocaleString();
+  $('mRows').textContent = metrics.train_rows ? `${metrics.train_rows.toLocaleString()} / ${metrics.test_rows.toLocaleString()}` : '—';
+  $('modelBadge').textContent = `${model.toUpperCase()} · R² ${r2.toFixed(3)}`;
 
-  lastPrediction = { pred, basePred, road, dayNum, hour, isPeak };
+  let wins = 0, gainSum = 0;
+  $('cmpBody').innerHTML = TARGETS.map(([k, label]) => {
+    const r = metrics.rf[k], g = metrics.gbm[k], d = g.r2 - r.r2;
+    if (d > 0) wins++; gainSum += d;
+    const c = (mm, v) => `<td class="${model === mm ? 'sel' : ''}">${v}</td>`;
+    return `<tr><td>${label}</td>${c('rf', r.r2.toFixed(3))}${c('gbm', g.r2.toFixed(3))}${c('rf', r.mae.toLocaleString())}${c('gbm', g.mae.toLocaleString())}<td class="${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '+' : ''}${d.toFixed(3)}</td></tr>`;
+  }).join('');
+  $('cmpNote').textContent = `Gradient Boosting has the higher R² on ${wins} of ${TARGETS.length} targets (average gain ${(gainSum / TARGETS.length).toFixed(3)}). Both models use the same 5 inputs (road, day, hour, weekend, peak), so the gap is small. The selected model's columns are highlighted.`;
+}
 
-  // Animate stats
-  animateStat('valCars',   pred.cars);
-  animateStat('valBikes',  pred.bikes);
-  animateStat('valBuses',  pred.buses);
-  animateStat('valTrucks', pred.trucks);
-  animateStat('valTotal',  pred.total);
+async function predict() {
+  const tk = ++reqId; $('statsGrid').style.opacity = .55;
+  const road = $('selRoad').value, dayNum = +$('selDay').value, hour = +$('selHour').value;
+  const isPeak = (hour >= 7 && hour <= 10) || (hour >= 17 && hour <= 20);
+  $('err').style.display = 'none';
 
-  // Sub labels
-  document.getElementById('subCars').textContent   = `${((pred.cars/pred.total)*100).toFixed(1)}% of total`;
-  document.getElementById('subBikes').textContent  = `${((pred.bikes/pred.total)*100).toFixed(1)}% of total`;
-  document.getElementById('subBuses').textContent  = `${((pred.buses/pred.total)*100).toFixed(1)}% of total`;
-  document.getElementById('subTrucks').textContent = `${((pred.trucks/pred.total)*100).toFixed(1)}% of total`;
-  document.getElementById('subTotal').textContent  = isPeak ? '🔴 Peak Hour' : '🟢 Off-Peak';
+  let G, base;
+  try {
+    const [rf, gbm, b] = await Promise.all([
+      getGrid('rf', road, flyoverOn), getGrid('gbm', road, flyoverOn),
+      flyoverOn ? getGrid(model, road, false) : null]);
+    G = {rf, gbm}; base = b;
+  } catch (e) {
+    $('err').textContent = 'Could not get predictions: ' + e.message + '. Make sure app.py is running and open http://127.0.0.1:5000';
+    $('err').style.display = 'block'; $('statsGrid').style.opacity = 1;
+    $('loadPill').textContent = '⚠ Server offline'; $('loadPill').style.cssText = 'background:rgba(255,71,87,.1);border-color:rgba(255,71,87,.3);color:var(--red)';
+    return;
+  }
+  if (tk !== reqId) return;
+  $('statsGrid').style.opacity = 1; $('loadPill').textContent = '✓ Model Loaded'; $('loadPill').removeAttribute('style');   // a newer request superseded this one
 
-  // Congestion
-  const p = BASE_PATTERNS[road];
-  const maxPossible = Math.max(...p.base) * 1.1;
-  const congPct = Math.min(100, Math.round((pred.total / maxPossible) * 100));
-  document.getElementById('congPct').textContent = congPct + '%';
-  const bar = document.getElementById('congBar');
+  const grid = G[model];
+  const pred = at(grid, dayNum, hour);
+  const basePred = base ? at(base, dayNum, hour) : {...pred};
+  const o = at(G[other()], dayNum, hour), diff = pred.total - o.total;
+
+  animateStat('valCars', pred.cars);   animateStat('valBikes', pred.bikes);
+  animateStat('valBuses', pred.buses); animateStat('valTrucks', pred.trucks);
+  animateStat('valTotal', pred.total);
+  const pc = v => (pred.total ? (v / pred.total * 100).toFixed(1) : '0.0') + '% of total';
+  $('subCars').textContent = pc(pred.cars);   $('subBikes').textContent = pc(pred.bikes);
+  $('subBuses').textContent = pc(pred.buses); $('subTrucks').textContent = pc(pred.trucks);
+  $('subTotal').textContent = isPeak ? '🔴 Peak Hour' : '🟢 Off-Peak';
+
+  $('cmpLine').innerHTML = `<b>${NAMES[model]}</b> predicts ${pred.total.toLocaleString()} vehicles · ${NAMES[other()]} predicts ${o.total.toLocaleString()} · difference ${diff >= 0 ? '+' : ''}${diff.toLocaleString()} (${o.total ? (diff / o.total * 100).toFixed(1) : 0}%)`;
+
+  const ref = (base || grid).flat().map(a => a[4]);
+  const congPct = Math.min(100, Math.round(pred.total / (Math.max(...ref) * 1.1) * 100));
+  $('congPct').textContent = congPct + '%';
+  const bar = $('congBar');
   bar.style.width = congPct + '%';
   bar.style.background = congPct > 75 ? 'var(--red)' : congPct > 50 ? 'var(--yellow)' : congPct > 25 ? 'var(--accent)' : 'var(--green)';
-
-  document.getElementById('congCars').textContent  = fmtK(pred.cars);
-  document.getElementById('congBikes').textContent = fmtK(pred.bikes);
-  document.getElementById('congBuses').textContent = fmtK(pred.buses);
-
-  const badge = document.getElementById('peakBadge');
+  $('congCars').textContent = fmtK(pred.cars); $('congBikes').textContent = fmtK(pred.bikes); $('congBuses').textContent = fmtK(pred.buses);
+  const badge = $('peakBadge');
   badge.className = 'peak-badge ' + (isPeak ? '' : 'off-peak');
   badge.textContent = isPeak ? '🔴 Peak Hour — Expect Heavy Congestion' : '🟢 Off-Peak — Traffic is Normal';
 
-  // Charts
-  document.getElementById('roadLabel').textContent = road;
-  renderHourlyChart(road, dayNum);
+  $('roadLabel').textContent = road;
+  renderHourlyChart(G, dayNum, hour);
   renderDonutChart(pred);
-  renderWeeklyChart(road, hour);
-
-  // Flyover panel
+  renderWeeklyChart(grid, hour, dayNum);
   renderFlyoverPanel(road, basePred, pred);
+  renderHeat(grid, dayNum, hour, Math.max(...ref) * 1.1);
+  renderBest(grid[dayNum], dayNum);
+}
+
+function renderHourlyChart(G, dayNum, hour) {
+  const labels = Array.from({length:24}, (_, i) => i % 3 === 0 ? (i === 0 ? '12AM' : i < 12 ? i + 'AM' : i === 12 ? '12PM' : (i - 12) + 'PM') : '');
+  const series = m => G[m][dayNum].map(a => a[4]);
+  const mk = (m, main) => ({ label: NAMES[m], data: series(m), borderColor: main ? COLORS[m] : '#64748b',
+    backgroundColor: main ? COLORS[m] + '18' : 'transparent', borderWidth: main ? 2.5 : 1.5, borderDash: main ? [] : [5, 4],
+    fill: main, tension: 0.4, pointRadius: c => (main && c.dataIndex === hour) ? 6 : 0, pointBackgroundColor: '#fff', pointHoverRadius: 4, order: main ? 0 : 1 });
+  $('hourlyPlaceholder').style.display = 'none';
+  if (hourlyChart) hourlyChart.destroy();
+  hourlyChart = new Chart($('hourlyChart').getContext('2d'), {
+    type: 'line', data: { labels, datasets: [mk(other(), false), mk(model, true)] },
+    options: { responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { labels: { color: '#94a3b8', font: {size: 11} } } },
+      scales: { x: { grid: {color: 'rgba(255,255,255,0.04)'}, ticks: {color: '#64748b', font: {size: 10}} },
+                y: { grid: {color: 'rgba(255,255,255,0.04)'}, ticks: {color: '#64748b', font: {size: 10}, callback: v => fmtK(v)} } } }
+  });
+}
+
+function renderWeeklyChart(grid, hour, day) {
+  $('weeklyPlaceholder').style.display = 'none';
+  const totals = grid.map(day => day[hour][4]);
+  if (weeklyChart) weeklyChart.destroy();
+  weeklyChart = new Chart($('weeklyChart').getContext('2d'), {
+    type: 'bar',
+    data: { labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+      datasets: [{ label: 'Total Vehicles', data: totals,
+        backgroundColor: totals.map((v, i) => i === day ? '#ff6b35' : COLORS[model] + '80'), borderRadius: 6, borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: {display: false} },
+      scales: { x: { grid: {display: false}, ticks: {color: '#64748b', font: {size: 11}} },
+                y: { grid: {color: 'rgba(255,255,255,0.04)'}, ticks: {color: '#64748b', font: {size: 10}, callback: v => fmtK(v)} } } }
+  });
 }
 
 function fmtK(n) {
   if (n >= 1000) return (n/1000).toFixed(1) + 'k';
   return n.toString();
 }
+
 
 function animateStat(id, target) {
   const el = document.getElementById(id);
@@ -801,39 +896,6 @@ function animateStat(id, target) {
   requestAnimationFrame(step);
 }
 
-function renderHourlyChart(road, dayNum) {
-  const labels = Array.from({length:24}, (_,i) => i%3===0 ? (i===0?'12AM':i<12?i+'AM':i===12?'12PM':(i-12)+'PM') : '');
-  const totalData = Array.from({length:24}, (_,i) => {
-    const p = mlPredict(road, dayNum, i);
-    return p.total;
-  });
-  const bikesData = Array.from({length:24}, (_,i) => {
-    const p = mlPredict(road, dayNum, i);
-    return p.bikes;
-  });
-
-  document.getElementById('hourlyPlaceholder').style.display = 'none';
-  const ctx = document.getElementById('hourlyChart').getContext('2d');
-  if (hourlyChart) hourlyChart.destroy();
-  hourlyChart = new Chart(ctx, {
-    type:'line',
-    data:{
-      labels,
-      datasets:[
-        { label:'Total Vehicles', data:totalData, borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,0.08)', borderWidth:2, fill:true, tension:0.4, pointRadius:0, pointHoverRadius:4 },
-        { label:'Motorcycles', data:bikesData, borderColor:'#ff6b35', backgroundColor:'rgba(255,107,53,0.05)', borderWidth:1.5, fill:true, tension:0.4, pointRadius:0, pointHoverRadius:4 }
-      ]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{ labels:{ color:'#64748b', font:{size:11} } } },
-      scales:{
-        x:{ grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#64748b', font:{size:10}} },
-        y:{ grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#64748b', font:{size:10}, callback:v=>fmtK(v)} }
-      }
-    }
-  });
-}
 
 function renderDonutChart(pred) {
   document.getElementById('donutPlaceholder').style.display = 'none';
@@ -852,30 +914,6 @@ function renderDonutChart(pred) {
   });
 }
 
-function renderWeeklyChart(road, hour) {
-  document.getElementById('weeklyPlaceholder').style.display = 'none';
-  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const totals = Array.from({length:7}, (_,d) => mlPredict(road, d, hour).total);
-  const ctx = document.getElementById('weeklyChart').getContext('2d');
-  if (weeklyChart) weeklyChart.destroy();
-  weeklyChart = new Chart(ctx, {
-    type:'bar',
-    data:{
-      labels: days,
-      datasets:[{ label:'Total Vehicles', data:totals,
-        backgroundColor: totals.map(v => v === Math.max(...totals) ? '#ff6b35' : 'rgba(0,212,255,0.5)'),
-        borderRadius:6, borderWidth:0 }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false} },
-      scales:{
-        x:{ grid:{display:false}, ticks:{color:'#64748b', font:{size:11}} },
-        y:{ grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#64748b', font:{size:10}, callback:v=>fmtK(v)} }
-      }
-    }
-  });
-}
 
 function renderFlyoverPanel(road, basePred, pred) {
   const panel = document.getElementById('flyoverPanel');
@@ -927,8 +965,65 @@ function renderFlyoverPanel(road, basePred, pred) {
     </div>`;
 }
 
-// Auto predict on load
-window.onload = () => predict();
+
+const DAYN = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const h12 = h => (h % 12 || 12) + (h < 12 ? ' AM' : ' PM');
+const LEVELS = [['Free Flow', 'var(--green)', 25], ['Moderate', 'var(--accent)', 50], ['Heavy', 'var(--yellow)', 75], ['Gridlock', 'var(--red)', 101]];
+const lvl = pct => LEVELS.find(l => pct < l[2]);   // same thresholds as the congestion bar
+let heatIdx = 4, lastHeat = null;
+const HEAT_NAMES = ['Cars', 'Motorcycles', 'Buses', 'Trucks', 'Total vehicles'];
+const HEAT_STOPS = [[0, 224, 138], [255, 210, 31], [255, 71, 87]];   // quiet -> busy
+function heatColor(t) {
+  const x = Math.min(1, Math.max(0, t)) * 2, i = Math.min(1, Math.floor(x)), f = x - i, a = HEAT_STOPS[i], b = HEAT_STOPS[i + 1];
+  return `rgb(${a.map((v, k) => Math.round(v + (b[k] - v) * f)).join(',')})`;
+}
+function renderHeat(grid, selDay, selHour) {
+  lastHeat = [grid, selDay, selHour];
+  const k = heatIdx, all = grid.flat().map(a => a[k]), mn = Math.min(...all), mx = Math.max(...all), span = (mx - mn) || 1;
+  const isPeak = h => (h >= 7 && h <= 10) || (h >= 17 && h <= 20);
+  // one label directly above every column: 12a, 1, 2 ... 11, 12p, 1 ... 11 — so each hour lines up with its own cell, no guessing
+  let html = '<span></span>' + Array.from({length: 24}, (_, h) =>
+    `<span class="hl${isPeak(h) ? ' pk' : ''}${h % 3 === 0 ? ' major' : ''}">${h === 0 ? '12a' : h === 12 ? '12p' : h > 12 ? h - 12 : h}</span>`).join('');
+  grid.forEach((row, d) => {
+    let bestH = -1;   // quietest hour to travel (6 AM to 10 PM)
+    row.forEach((a, h) => { if (h >= 6 && h <= 22 && (bestH < 0 || a[k] < row[bestH][k])) bestH = h; });
+    html += `<span class="dl${d === selDay ? ' on' : ''}">${DAYN[d].slice(0, 3)}</span>` + row.map((a, h) =>
+      `<button class="hc${d === selDay && h === selHour ? ' sel' : ''}${h === bestH ? ' best' : ''}" data-d="${d}" data-h="${h}" style="background:${heatColor((a[k] - mn) / span)}" aria-label="${DAYN[d]} ${h12(h)}, ${a[k].toLocaleString()} ${HEAT_NAMES[k]}"></button>`).join('');
+  });
+  const el = $('heat');
+  el.innerHTML = html;
+  el.onclick = e => { const b = e.target.closest('.hc'); if (b) { $('selDay').value = b.dataset.d; $('selHour').value = b.dataset.h; predict(); } };
+  const tip = $('heatTip');
+  el.onmousemove = e => {
+    const b = e.target.closest('.hc');
+    if (!b) { tip.style.display = 'none'; return; }
+    const d = +b.dataset.d, h = +b.dataset.h, v = grid[d][h][k], avg = grid[d].reduce((s, a) => s + a[k], 0) / 24;
+    const dv = avg ? Math.round((v - avg) / avg * 100) : 0;
+    tip.innerHTML = `<b>${DAYN[d]}, ${h12(h)}</b><br>${v.toLocaleString()} ${HEAT_NAMES[k].toLowerCase()}<br><span style="color:${dv > 0 ? 'var(--red)' : 'var(--green)'}">${dv >= 0 ? '+' : ''}${dv}% vs ${DAYN[d]} average</span>`;
+    tip.style.display = 'block';
+    tip.style.left = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 10) + 'px';
+    tip.style.top = (e.clientY + 16) + 'px';
+  };
+  el.onmouseleave = () => { tip.style.display = 'none'; };
+  $('heatKey').innerHTML = `<span>Quietest ${mn.toLocaleString()}<span class="grad"></span>Busiest ${mx.toLocaleString()}</span><span><i style="background:#fff;border-radius:50%;width:6px;height:6px;margin:0 8px 0 0"></i>Quietest hour to travel each day (6 AM to 10 PM)</span>`;
+}
+$('heatMetric').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  heatIdx = +b.dataset.i;
+  document.querySelectorAll('#heatMetric button').forEach(x => x.classList.toggle('on', x === b));
+  if (lastHeat) renderHeat(...lastHeat);
+};
+function renderBest(dayRow, d) {
+  const hrs = dayRow.map((a, h) => [a[4], h]).filter(x => x[1] >= 6 && x[1] <= 22);
+  const q = hrs.reduce((a, b) => b[0] < a[0] ? b : a), b = hrs.reduce((a, c) => c[0] > a[0] ? c : a);
+  $('bestTime').innerHTML = `💡 Best time to travel on ${DAYN[d]} (6 AM to 10 PM): <b>${h12(q[1])}</b> with about ${q[0].toLocaleString()} vehicles. Busiest: <b style="color:var(--red)">${h12(b[1])}</b> with about ${b[0].toLocaleString()}.`;
+}
+// ---- Init ----
+['selRoad','selDay','selHour'].forEach(id => $(id).addEventListener('change', predict));
+Promise.all([
+  fetch('/flyover-impact').then(r => r.json()).catch(() => ({})),
+  fetch('/model-metrics').then(r => r.json()).catch(() => ({}))
+]).then(([fi, mt]) => { FLYOVER_IMPACT = fi; metrics = mt; updateMetricsUI(); predict(); });
 </script>
 </body>
 </html>
