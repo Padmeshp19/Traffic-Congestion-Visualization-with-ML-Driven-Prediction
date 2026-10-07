@@ -1,0 +1,106 @@
+{
+  "A_vehicle_mix_pct": {
+    "Published: M G Road (mid-block)": {
+      "Cars": 25.0,
+      "Motorcycles": 52.0,
+      "Buses": 4.0,
+      "Trucks": 19.0
+    },
+    "Published: ROB on Chord Road near Mysore Road (screen line)": {
+      "Cars": 19.7,
+      "Motorcycles": 54.7,
+      "Buses": 6.3,
+      "Trucks": 19.2
+    },
+    "Team video: mean of 6 junctions": {
+      "Cars": 50.5,
+      "Motorcycles": 30.1,
+      "Buses": 8.0,
+      "Trucks": 11.2
+    },
+    "Team video: range across 6 junctions (motorcycles)": "29.4-30.6",
+    "Training dataset (all 22 roads)": {
+      "Cars": 22.4,
+      "Motorcycles": 53.3,
+      "Buses": 5.2,
+      "Trucks": 19.1
+    },
+    "Original synthetic generator (before calibration)": {
+      "Cars": 30.5,
+      "Motorcycles": 53.5,
+      "Buses": 14.0,
+      "Trucks": 2.0
+    }
+  },
+  "B_peak_hour": {
+    "published_peak_hour_factor_pct": 10,
+    "dataset_phf_pct_min_median_max": [
+      10.2,
+      11.9,
+      13.4
+    ],
+    "published_am_peak": "9-10 AM (generally 9-11 AM)",
+    "published_pm_peak": "6-7 PM (generally 5-7 PM)",
+    "dataset_am_peak_hour_most_common": 9,
+    "dataset_pm_peak_hour_most_common": 18,
+    "dataset_am_peak_hour_counts": {
+      "9": 15,
+      "8": 7
+    },
+    "dataset_pm_peak_hour_counts": {
+      "18": 17,
+      "19": 4,
+      "17": 1
+    }
+  },
+  "C_volume": {
+    "published_2006_12h_vehicles_hosur_road_near_csb": 62514,
+    "fleet_growth_2006_to_2023_x": 4.02,
+    "published_scaled_by_fleet_growth": 251464,
+    "dataset_weekday_12h_vehicles": {
+      "Silk Board Junction": 277969,
+      "Hosur Road": 285444
+    },
+    "note": "Different year, direction coverage and survey definition; indicative only."
+  },
+  "D_video": {
+    "hours": [
+      8,
+      14,
+      18,
+      22
+    ],
+    "video_hourly_index": {
+      "8": 0.98,
+      "14": 1.01,
+      "18": 1.01,
+      "22": 1.01
+    },
+    "dataset_hourly_index_same_6_junctions": {
+      "8": 1.27,
+      "14": 0.75,
+      "18": 1.51,
+      "22": 0.47
+    },
+    "video_weekend_vs_weekday_ratio": 0.99,
+    "dataset_weekend_vs_weekday_ratio": 1.01,
+    "video_rows_per_junction_hours_covered": "4 hours (8, 14, 18, 22) x 7 days; 28 of 168 cells",
+    "relative_size_rank_video": {
+      "Bommanahalli": 5,
+      "Bommasandra": 1,
+      "Electronic City": 2,
+      "HSR Layout": 6,
+      "Hosa Road": 3,
+      "Kudlu Gate": 4
+    },
+    "relative_size_rank_dataset": {
+      "Bommanahalli": 5,
+      "Bommasandra": 1,
+      "Electronic City": 2,
+      "HSR Layout": 6,
+      "Hosa Road": 3,
+      "Kudlu Gate": 4
+    },
+    "relative_size_note": "Matches by construction (size factors come from the video), so this is not independent validation."
+  }
+}

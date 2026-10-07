@@ -30,6 +30,7 @@ def load_json(path):
             return json.load(f)
     return {}
 
+FLYOVER_DIVERSION = 0.30          # share of 2-wheelers diverted onto the flyover (applies to EVERY road)
 flyover_impact = load_json('models/flyover_impact.json')
 model_metrics  = load_json('models/model_metrics.json')
 # ---- Home route ----
@@ -72,8 +73,10 @@ def predict():
     total  = cars + bikes + buses + trucks
 
     # Apply flyover reduction if toggled on (unchanged logic)
-    if flyover and road in flyover_impact:
-        diverted = int(bikes * 0.30)
+    bikes_before = bikes
+    diverted = 0
+    if flyover:                                   # works for all 22 roads, not just the 7 corridor junctions
+        diverted = int(bikes * FLYOVER_DIVERSION)
         bikes   -= diverted
         total    = cars + bikes + buses + trucks
 
@@ -88,7 +91,9 @@ def predict():
         'motorcycles': bikes,
         'buses':     buses,
         'trucks':    trucks,
-        'total':     total
+        'total':     total,
+        'bikes_before':   bikes_before,
+        'bikes_diverted': diverted
     })
 
 # ---- Full week grid in ONE request (fast path used by the dashboard) ----
@@ -109,8 +114,8 @@ def predict_grid():
     X = pd.DataFrame(rows, columns=['Day_Num','Hour','Is_Weekend','Peak_Flag','Road_Encoded'])
 
     pred = np.maximum(0, np.round(MODELS[model_name].predict(X))).astype(int)[:, :4]
-    if flyover and road in flyover_impact:          # same rule as /predict
-        pred[:, 1] -= (pred[:, 1] * 0.30).astype(int)
+    if flyover:                                      # same rule as /predict, all roads
+        pred[:, 1] -= (pred[:, 1] * FLYOVER_DIVERSION).astype(int)
     total = pred.sum(axis=1, keepdims=True)
     grid  = np.hstack([pred, total]).reshape(7, 24, 5).tolist()   # [day][hour] = [cars, bikes, buses, trucks, total]
 
