@@ -21162,6 +21162,80 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1861999584}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1093973916
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1093973918}
+  - component: {fileID: 1093973917}
+  m_Layer: 0
+  m_Name: FlyoverToggle
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1093973917
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1093973916}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43a16e79ca3104d4b8a80caf72a7fc1a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FlyoverVisibility
+  trafficAPI: {fileID: 716971631}
+  flyoverParts:
+  - {fileID: 1116845514}
+  - {fileID: 239660979}
+  - {fileID: 1628215347}
+  - {fileID: 1741436383}
+  - {fileID: 1589648676}
+  - {fileID: 76227830}
+  - {fileID: 1609598073}
+  - {fileID: 1218242961}
+  - {fileID: 431884251}
+  - {fileID: 30980781}
+  - {fileID: 1722302255}
+  - {fileID: 1949103844}
+  - {fileID: 189409551}
+  - {fileID: 67013495}
+  - {fileID: 702410187}
+  - {fileID: 570435527}
+  - {fileID: 1557598271}
+  - {fileID: 675588674}
+  - {fileID: 463953687}
+  - {fileID: 156586718}
+  - {fileID: 477473198}
+  - {fileID: 1769794629}
+  - {fileID: 615379809}
+  - {fileID: 1743227554}
+  animate: 1
+  riseSeconds: 1.2
+  waveSeconds: 0.8
+  riseDepth: 2.2
+--- !u!4 &1093973918
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1093973916}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1105808425
 GameObject:
   m_ObjectHideFlags: 0
@@ -38752,3 +38826,4 @@ SceneRoots:
   - {fileID: 1861999584}
   - {fileID: 716971632}
   - {fileID: 334900704}
+  - {fileID: 1093973918}
