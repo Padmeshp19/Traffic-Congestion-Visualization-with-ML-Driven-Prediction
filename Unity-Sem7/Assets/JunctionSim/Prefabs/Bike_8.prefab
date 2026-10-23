@@ -73,6 +73,7 @@ MonoBehaviour:
   signal: {fileID: 0}
   endPoint: {fileID: 0}
   endStopDistance: 2
+  removeAtEnd: 1
 --- !u!1001 &5718869537064414208
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -102,6 +102,8 @@ public class JunctionSpawner : MonoBehaviour
     private CountSource appliedSource;
     private int[] appliedTestNumbers = new int[4];
     private readonly HashSet<string> warnedOnce = new HashSet<string>();
+    private readonly List<string> problems = new List<string>();
+    private Transform container;
     private GUIStyle readoutStyle;
 
     /// <summary>Sent whenever the targets change (useful for the UI panel).</summary>
@@ -131,6 +133,7 @@ public class JunctionSpawner : MonoBehaviour
             active[type] = new List<LaneCarController>();
             predicted[type] = 0;
             target[type] = 0;
+            templatesByType[type] = new List<VehicleInfo>();
         }
     }
 
@@ -166,42 +169,79 @@ public class JunctionSpawner : MonoBehaviour
 
     private void Start()
     {
-        if (lanes == null || lanes.Length == 0)
-            lanes = SceneManager.GetActiveScene().GetRootGameObjects()
-                .SelectMany(root => root.GetComponentsInChildren<JunctionLane>(true))
-                .ToArray();
-
-        lanes = lanes.Where(lane => lane != null && lane.IsValid).ToArray();
-        if (lanes.Length == 0)
-            Debug.LogError("JunctionSpawner: no usable JunctionLane found. Run Tools > Junction Sim > Set Up Lanes first.");
-
-        foreach (VehicleType type in Types)
-            templatesByType[type] = (templates ?? new VehicleInfo[0]).Where(t => t != null && t.type == type).ToList();
-
-        foreach (VehicleType type in Types)
+        try
         {
-            if (templatesByType[type].Count == 0)
-                Debug.LogWarning($"JunctionSpawner: no {type} template assigned, so no {type}s can be spawned.");
-            if (!lanes.Any(lane => lane.Allows(type)))
-                Debug.LogWarning($"JunctionSpawner: no lane allows {type}s.");
+            if (lanes == null || lanes.Length == 0)
+                lanes = SceneManager.GetActiveScene().GetRootGameObjects()
+                    .SelectMany(root => root.GetComponentsInChildren<JunctionLane>(true))
+                    .ToArray();
+
+            lanes = lanes.Where(lane => lane != null && lane.IsValid).ToArray();
+            if (lanes.Length == 0)
+                Problem("No lanes found. Run Tools > Junction Sim > Set Up Lanes, then save the scene.");
+
+            foreach (VehicleType type in Types)
+                templatesByType[type] = (templates ?? new VehicleInfo[0]).Where(t => t != null && t.type == type).ToList();
+
+            foreach (VehicleInfo t in templates ?? new VehicleInfo[0])
+            {
+                if (t != null && t.gameObject.scene.IsValid())
+                    Debug.LogWarning($"JunctionSpawner: template '{t.name}' is an object in the scene, not a prefab. " +
+                                     "Drag the prefabs from Assets/JunctionSim/Prefabs (Project window) into Templates instead.", t);
+            }
+
+            foreach (VehicleType type in Types)
+            {
+                if (templatesByType[type].Count == 0)
+                    Debug.LogWarning($"JunctionSpawner: no {type} template assigned, so no {type}s can be spawned.");
+                if (!lanes.Any(lane => lane.Allows(type)))
+                    Debug.LogWarning($"JunctionSpawner: no lane allows {type}s.");
+                GetGroup(type);
+            }
+
+            if (switchOffOldVehicles)
+                SwitchOffOldVehicles();
+        }
+        catch (Exception exception)
+        {
+            Problem($"Start-up failed: {exception.GetType().Name}: {exception.Message}");
+            Debug.LogException(exception, this);
         }
 
-        // Spawned vehicles go under their own top-level object, so the spawner's own position,
-        // rotation or scale (or whatever object it sits inside) can never move, turn or squash them.
-        var container = new GameObject("JunctionSim_Vehicles").transform;
-        foreach (VehicleType type in Types)
+        if (lanes == null)
+            lanes = new JunctionLane[0];
+        appliedSource = source;
+        countsDirty = true;
+        fillAnywhere = true;
+    }
+
+    /// <summary>
+    /// The parent object for one vehicle type, created on first use. All of them sit under a
+    /// top-level JunctionSim_Vehicles object, so the spawner's own position, rotation or scale
+    /// (or whatever object it sits inside) can never move, turn or squash the vehicles.
+    /// </summary>
+    private Transform GetGroup(VehicleType type)
+    {
+        if (container == null)
+            container = new GameObject("JunctionSim_Vehicles").transform;
+
+        if (!groups.TryGetValue(type, out Transform group) || group == null)
         {
-            var group = new GameObject(GroupName(type)).transform;
+            group = new GameObject(GroupName(type)).transform;
             group.SetParent(container, false);
             groups[type] = group;
         }
 
-        if (switchOffOldVehicles)
-            SwitchOffOldVehicles();
+        return group;
+    }
 
-        appliedSource = source;
-        countsDirty = true;
-        fillAnywhere = true;
+    /// <summary>A problem that stops vehicles appearing: logged once and shown in red in the readout.</summary>
+    private void Problem(string message)
+    {
+        if (problems.Contains(message))
+            return;
+        problems.Add(message);
+        Debug.LogError("JunctionSpawner: " + message, this);
     }
 
     private void SwitchOffOldVehicles()
@@ -412,7 +452,7 @@ public class JunctionSpawner : MonoBehaviour
 
     private void Reconcile()
     {
-        if (lanes.Length == 0)
+        if (lanes == null || lanes.Length == 0)
             return;
 
         // Vehicles deleted by something else (e.g. by hand in the Hierarchy) are forgotten.
@@ -471,15 +511,26 @@ public class JunctionSpawner : MonoBehaviour
         Shuffle(needed);
         bool anywhere = fillAnywhere;
         foreach (VehicleType type in needed)
-            TrySpawn(type, anywhere);
+        {
+            try
+            {
+                TrySpawn(type, anywhere);
+            }
+            catch (Exception exception)
+            {
+                if (!problems.Any(p => p.StartsWith("Could not place")))
+                    Debug.LogException(exception, this);
+                Problem($"Could not place vehicles: {exception.GetType().Name}: {exception.Message}");
+                break;
+            }
+        }
 
         fillAnywhere = false;
     }
 
     private bool TrySpawn(VehicleType type, bool anywhere)
     {
-        List<VehicleInfo> choices = templatesByType[type];
-        if (choices.Count == 0)
+        if (!templatesByType.TryGetValue(type, out List<VehicleInfo> choices) || choices.Count == 0)
             return false;
 
         VehicleInfo template = choices[UnityEngine.Random.Range(0, choices.Count)];
@@ -568,8 +619,9 @@ public class JunctionSpawner : MonoBehaviour
             return false;
 
         VehicleType type = template.type;
-        GameObject vehicle = Instantiate(template.gameObject, position, lane.Rotation, groups[type]);
+        GameObject vehicle = Instantiate(template.gameObject, position, lane.Rotation, GetGroup(type));
         vehicle.name = $"{template.name}_{++spawnCounter:000}";
+        vehicle.SetActive(true);   // a copy of a switched-off template would otherwise be switched off too
 
         var driver = vehicle.GetComponent<LaneCarController>();
         if (driver == null)
@@ -601,6 +653,8 @@ public class JunctionSpawner : MonoBehaviour
                   $"scale {vehicle.transform.lossyScale}, active {vehicle.activeInHierarchy}, {renderers.Length} renderers, " +
                   $"visible size {box.size} (a car should be about 1.1 long, 0.5 wide, 0.4 high).", vehicle);
     }
+
+    /// <summary>Lanes that allow this type, in the order to try them: preferred lanes first for buses/trucks, otherwise random.</summary>
     private IEnumerable<JunctionLane> LanesFor(VehicleType type)
     {
         List<JunctionLane> allowed = lanes.Where(lane => lane.Allows(type)).ToList();
@@ -725,6 +779,14 @@ public class JunctionSpawner : MonoBehaviour
     private string ReadoutFooter()
     {
         var text = new StringBuilder();
+        foreach (string problem in problems)
+            text.AppendLine("<color=#ff6b6b><b>Problem:</b> " + problem + "</color>");
+        foreach (VehicleType type in Types)
+        {
+            if (Target(type) > 0 && templatesByType.TryGetValue(type, out var list) && list.Count == 0)
+                text.AppendLine($"<color=#ff6b6b><b>Problem:</b> no {GroupName(type)} templates. Drag all prefabs from " +
+                                "Assets/JunctionSim/Prefabs into Templates.</color>");
+        }
         text.AppendLine("Waiting* = queued to enter because the start of the road is full. On road + waiting = target.");
         text.AppendLine("Bikes* = ground bikes only" + (source == CountSource.LivePrediction
             ? $"; all bikes {PredictedAllBikes}/hour, flyover {(flyoverOn ? "ON" : "OFF")} takes {predictedFlyoverBikes}"
