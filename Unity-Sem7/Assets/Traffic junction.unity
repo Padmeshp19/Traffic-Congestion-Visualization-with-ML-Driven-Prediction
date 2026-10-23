@@ -6476,7 +6476,7 @@ MonoBehaviour:
   - {fileID: 5493009096274591459, guid: 52e118cce8612254797a616913299888, type: 3}
   vehiclesPerHourPerSpawned: 600
   maxVehiclesOnRoad: 70
-  source: 0
+  source: 1
   trafficAPI: {fileID: 0}
   testCars: 7104
   testBikes: 16870
