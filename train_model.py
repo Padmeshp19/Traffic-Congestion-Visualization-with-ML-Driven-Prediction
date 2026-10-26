@@ -116,7 +116,7 @@ def evaluate(name, mdl):
     return out
 
 rf = MultiOutputRegressor(RandomForestRegressor(n_estimators=300, max_depth=15, min_samples_leaf=2,
-                                                random_state=42, n_jobs=-1)).fit(X_tr, y_tr)
+                                                random_state=42, n_jobs=1)).fit(X_tr, y_tr)
 rf_scores = evaluate('RANDOM FOREST', rf)
 gbm = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=300, max_depth=4, learning_rate=0.05,
                                                      random_state=42)).fit(X_tr, y_tr)

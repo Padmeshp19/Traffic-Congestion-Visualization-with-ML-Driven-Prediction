@@ -309,6 +309,21 @@ MotorcycleRoutingUpdated
 
 Do not spawn `flyoverMotorcycles` again on the ground. This would duplicate motorcycles in the simulation.
 
+
+## Preliminary flyover feasibility conclusion
+
+The dashboard includes a **Flyover Feasibility — Preliminary Conclusion** panel for the selected road and prediction model. It compares the baseline prediction with the hypothetical 30% motorcycle-diversion scenario over all 168 day/hour slots in the model's weekly grid.
+
+### Screening logic
+
+- Weekly traffic-volume reduction is calculated as  
+  `(sum of baseline hourly totals - sum of flyover-scenario hourly totals) / sum of baseline hourly totals × 100`.
+- Average motorcycles diverted per hour is the sum of the hourly motorcycle differences divided by 168.
+- Traffic-impact screening labels are: **meaningful** at 8% or more, **modest** from 3% to under 8%, and **limited** below 3%. These are project screening thresholds, not official engineering standards.
+- The conclusion always states that **construction feasibility is not yet determinable** from traffic counts alone. A positive traffic-impact result supports a detailed feasibility study; it does not establish that a flyover should be built.
+
+A construction decision additionally needs verified site data for right-of-way and road width, ramp/junction geometry, structural and geotechnical conditions, road safety, utilities, environmental effects, capital and maintenance costs, and statutory approvals. The current dataset includes generated/derived road profiles; the validation report records video observations at only four hours per day for seven days (28 of 168 day/hour cells). Validate model estimates against representative field traffic counts before using them for planning.
+
 ## Integration checklist
 
 ```text

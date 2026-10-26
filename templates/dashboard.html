@@ -402,6 +402,43 @@
     margin-bottom:28px;
   }
 
+
+  /* Preliminary flyover feasibility conclusion */
+  .feasibility-panel {
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:22px;
+    margin-top:28px;
+  }
+  .feasibility-grid {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:12px;
+    margin:16px 0;
+  }
+  @media(max-width:800px){.feasibility-grid{grid-template-columns:1fr}}
+  .feasibility-stat {
+    background:var(--bg3);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px;
+  }
+  .feasibility-stat .fs-label {
+    color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.7px;
+  }
+  .feasibility-stat .fs-value {
+    font-family:'Rajdhani',sans-serif;font-size:23px;font-weight:700;color:var(--accent);
+    margin-top:5px;
+  }
+  .feasibility-verdict {
+    border:1px solid rgba(255,210,31,.35);
+    background:rgba(255,210,31,.07);
+    border-radius:10px;padding:14px;line-height:1.6;font-size:13px;
+  }
+  .feasibility-verdict strong {color:var(--yellow)}
+  .feasibility-note {font-size:12px;color:var(--muted);line-height:1.65;margin-top:12px}
+
   /* Loading overlay */
   .loading { display:none; }
   .loading.show { display:flex; align-items:center; gap:8px; color:var(--accent); font-size:13px; }
@@ -692,7 +729,7 @@
         <div style="width:100%">
           <div class="congestion-bar-wrap">
             <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-              <span style="font-size:12px;color:var(--muted);">Congestion Index</span>
+              <span style="font-size:12px;color:var(--muted);">Traffic Volume Index</span>
               <span style="font-family:'JetBrains Mono';font-size:13px;color:var(--accent)" id="congPct">—</span>
             </div>
             <div class="congestion-bar-track">
@@ -724,6 +761,35 @@
     </div>
   </div>
 
+  <!-- PRELIMINARY FEASIBILITY CONCLUSION -->
+  <section class="feasibility-panel" aria-labelledby="feasibilityTitle">
+    <div class="panel-title"><span style="background:var(--yellow)"></span><span id="feasibilityTitle">Flyover Feasibility — Preliminary Conclusion</span></div>
+    <p style="font-size:13px;color:var(--muted);line-height:1.6">
+      This assessment compares the selected model's predicted traffic for all 7 days and 24 hours with the 30% motorcycle-diversion scenario. It estimates traffic-volume impact only; it is not a construction approval.
+    </p>
+    <div class="feasibility-grid">
+      <div class="feasibility-stat">
+        <div class="fs-label">Weekly traffic-volume reduction</div>
+        <div class="fs-value" id="feasibilityReduction">Calculating…</div>
+      </div>
+      <div class="feasibility-stat">
+        <div class="fs-label">Average motorcycles diverted / hour</div>
+        <div class="fs-value" id="feasibilityBikes">—</div>
+      </div>
+      <div class="feasibility-stat">
+        <div class="fs-label">Traffic-impact assessment</div>
+        <div class="fs-value" id="feasibilityTrafficVerdict">—</div>
+      </div>
+    </div>
+    <div class="feasibility-verdict" id="feasibilityConstructionVerdict">
+      <strong>Construction feasibility: undetermined.</strong>
+      Loading the selected road's scenario comparison…
+    </div>
+    <p class="feasibility-note" id="feasibilityEvidence">
+      The construction decision requires site-specific road width/right-of-way, ramp and junction geometry, structural and geotechnical review, safety/accessibility checks, utilities, environmental impact, construction and maintenance costs, and approval from the relevant authorities. These inputs are not available in the current traffic-prediction dataset.
+    </p>
+  </section>
+
 </div>
 
 <script>
@@ -731,7 +797,7 @@
 const NAMES  = {rf:'Random Forest', gbm:'Gradient Boosting'};
 const COLORS = {rf:'#00d4ff', gbm:'#b388ff'};
 const TARGETS = [['Cars','Cars'],['Motorcycles','Motorcycles'],['Buses','Buses'],['Trucks','Trucks + autos'],['Total_Vehicles','Total vehicles']];
-let model = 'gbm', flyoverOn = false, FLYOVER_IMPACT = {}, metrics = {}, cache = {}, reqId = 0;
+let model = 'gbm', flyoverOn = false, FLYOVER_IMPACT = {}, metrics = {}, cache = {}, reqId = 0, feasibilityReqId = 0;
 let hourlyChart = null, donutChart = null, weeklyChart = null;
 const $ = id => document.getElementById(id);
 const other = () => model === 'rf' ? 'gbm' : 'rf';
@@ -842,6 +908,7 @@ async function predict() {
   renderFlyoverPanel(road, basePred, pred);
   renderHeat(grid, dayNum, hour, Math.max(...ref) * 1.1);
   renderBest(grid[dayNum], dayNum);
+  renderFeasibility(road, model);
 }
 
 function renderHourlyChart(G, dayNum, hour) {
@@ -927,7 +994,7 @@ function renderFlyoverPanel(road, basePred, pred) {
         <div style="color:var(--muted);font-size:13px;margin-bottom:12px;">Estimated flyover impact for <strong style="color:var(--text)">${road}</strong></div>
         <div class="impact-grid">
           <div class="impact-item"><div class="val" style="color:var(--accent2)">${impact.avg_motorcycles.toLocaleString()}</div><div class="lbl">Avg Daily Bikes</div></div>
-          <div class="impact-item"><div class="val">${impact.congestion_reduction_pct}%</div><div class="lbl">Potential Reduction</div></div>
+          <div class="impact-item"><div class="val">${impact.congestion_reduction_pct}%</div><div class="lbl">Modelled Volume Reduction</div></div>
           <div class="impact-item"><div class="val" style="color:var(--yellow)">${impact.bikes_diverted.toLocaleString()}</div><div class="lbl">Bikes Diverted/hr</div></div>
           <div class="impact-item"><div class="val" style="color:var(--green)">${impact.avg_total.toLocaleString()}</div><div class="lbl">Avg Total Vehicles</div></div>
         </div>
@@ -959,7 +1026,7 @@ function renderFlyoverPanel(road, basePred, pred) {
     </div>
     <div class="impact-grid" style="margin-top:12px;">
       <div class="impact-item"><div class="val">${diverted.toLocaleString()}</div><div class="lbl">Bikes Diverted</div></div>
-      <div class="impact-item"><div class="val">${reductionPct}%</div><div class="lbl">Congestion Drop</div></div>
+      <div class="impact-item"><div class="val">${reductionPct}%</div><div class="lbl">Traffic Volume Drop</div></div>
       <div class="impact-item"><div class="val" style="color:var(--accent2)">${basePred.bikes.toLocaleString()}</div><div class="lbl">Bikes Before</div></div>
       <div class="impact-item"><div class="val" style="color:var(--green)">${pred.bikes.toLocaleString()}</div><div class="lbl">Bikes After</div></div>
     </div>`;
@@ -1018,6 +1085,98 @@ function renderBest(dayRow, d) {
   const q = hrs.reduce((a, b) => b[0] < a[0] ? b : a), b = hrs.reduce((a, c) => c[0] > a[0] ? c : a);
   $('bestTime').innerHTML = `💡 Best time to travel on ${DAYN[d]} (6 AM to 10 PM): <b>${h12(q[1])}</b> with about ${q[0].toLocaleString()} vehicles. Busiest: <b style="color:var(--red)">${h12(b[1])}</b> with about ${b[0].toLocaleString()}.`;
 }
+
+// Estimate traffic-volume benefit across all 168 day/hour slots for the selected road.
+// This is a traffic proxy, not a full transport, engineering, or financial feasibility study.
+async function renderFeasibility(road, selectedModel) {
+  const currentRequest = ++feasibilityReqId;
+  const reductionEl = $('feasibilityReduction');
+  const bikesEl = $('feasibilityBikes');
+  const trafficVerdictEl = $('feasibilityTrafficVerdict');
+  const constructionEl = $('feasibilityConstructionVerdict');
+
+  reductionEl.textContent = 'Calculating…';
+  bikesEl.textContent = '—';
+  trafficVerdictEl.textContent = '—';
+
+  try {
+    const [baselineGrid, flyoverGrid] = await Promise.all([
+      getGrid(selectedModel, road, false),
+      getGrid(selectedModel, road, true)
+    ]);
+    if (currentRequest !== feasibilityReqId) return;
+
+    let baselineTotal = 0;
+    let flyoverTotal = 0;
+    let bikesDiverted = 0;
+    let slots = 0;
+    let peakBaseline = 0;
+    let peakFlyover = 0;
+    let peakSlots = 0;
+
+    for (let d = 0; d < 7; d++) {
+      for (let h = 0; h < 24; h++) {
+        const before = at(baselineGrid, d, h);
+        const after = at(flyoverGrid, d, h);
+        baselineTotal += before.total;
+        flyoverTotal += after.total;
+        bikesDiverted += Math.max(0, before.bikes - after.bikes);
+        slots++;
+        const peak = (h >= 7 && h <= 10) || (h >= 17 && h <= 20);
+        if (peak) {
+          peakBaseline += before.total;
+          peakFlyover += after.total;
+          peakSlots++;
+        }
+      }
+    }
+
+    const reductionPct = baselineTotal > 0
+      ? ((baselineTotal - flyoverTotal) / baselineTotal) * 100 : 0;
+    const avgBikesDiverted = slots > 0 ? bikesDiverted / slots : 0;
+    const peakReductionPct = peakBaseline > 0
+      ? ((peakBaseline - peakFlyover) / peakBaseline) * 100 : 0;
+
+    reductionEl.textContent = `${reductionPct.toFixed(1)}%`;
+    bikesEl.textContent = Math.round(avgBikesDiverted).toLocaleString();
+    if (reductionPct >= 8) {
+      trafficVerdictEl.textContent = 'Meaningful modelled benefit';
+      trafficVerdictEl.style.color = 'var(--green)';
+    } else if (reductionPct >= 3) {
+      trafficVerdictEl.textContent = 'Modest modelled benefit';
+      trafficVerdictEl.style.color = 'var(--yellow)';
+    } else {
+      trafficVerdictEl.textContent = 'Limited modelled benefit';
+      trafficVerdictEl.style.color = 'var(--red)';
+    }
+
+    constructionEl.innerHTML =
+      `<strong>Construction feasibility: not yet determinable.</strong> ` +
+      `For <strong>${road}</strong>, the selected ${NAMES[selectedModel]} model estimates a ` +
+      `${reductionPct.toFixed(1)}% average reduction in predicted hourly traffic volume ` +
+      `under the assumed 30% motorcycle diversion (${peakReductionPct.toFixed(1)}% during defined peak hours). ` +
+      `${reductionPct >= 8
+        ? 'This is a positive traffic-impact signal and supports proceeding to a detailed site feasibility study.'
+        : reductionPct >= 3
+          ? 'This is a modest traffic-impact signal; compare it with alternative junction improvements before advancing.'
+          : 'The estimated traffic-volume benefit is limited; investigate other congestion-management options before advancing.'} ` +
+      `The model alone cannot establish whether building a flyover is technically, financially, or legally feasible.`;
+
+    $('feasibilityEvidence').textContent =
+      'Decision logic: ≥8% modelled volume reduction = meaningful traffic-impact signal; 3–<8% = modest; <3% = limited. ' +
+      'These are project screening thresholds, not official engineering standards. ' +
+      'Construction feasibility remains unconfirmed until site-specific right-of-way and road width, ramp geometry, structural/geotechnical conditions, road safety, utilities, environmental effects, capital and maintenance costs, and approvals are assessed. ' +
+      'The dataset includes generated/derived road profiles. The validation report records video observations for only 4 hours per day across 7 days (28 of 168 day/hour cells), and the generated profiles are not independent site measurements. Validate the estimates with representative field counts before making a planning decision.';
+  } catch (e) {
+    if (currentRequest !== feasibilityReqId) return;
+    reductionEl.textContent = 'Unavailable';
+    bikesEl.textContent = '—';
+    trafficVerdictEl.textContent = 'Cannot assess';
+    constructionEl.innerHTML =
+      '<strong>Construction feasibility: undetermined.</strong> The scenario predictions could not be loaded. Check the Flask server and model files.';
+  }
+}
+
 // ---- Init ----
 ['selRoad','selDay','selHour'].forEach(id => $(id).addEventListener('change', predict));
 Promise.all([
