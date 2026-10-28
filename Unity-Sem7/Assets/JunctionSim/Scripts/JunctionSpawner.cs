@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -18,6 +20,19 @@ using UnityEngine.SceneManagement;
 ///
 /// Counts come from typed-in test numbers (keys 1-5 pick presets) or from TrafficAPIManager.
 /// Motorcycles use the GROUND count only; flyover bikes belong to the flyover simulation.
+///
+/// HOUR COUNTER: a clock plays the predicted hour (e.g. 08:00 -> 09:00) in a few real minutes.
+///   - Reached end points (exact): +1 every time a vehicle drives onto an end point. Nothing scaled.
+///     (Extra vehicles from earlier traffic that are driving off are not counted.)
+///   - Counted for the hour: each exit is worth  600 x (measured crossing time) / (hour length in s)
+///     real vehicles. One vehicle on screen stands for 600 per hour and makes one trip every
+///     "crossing time" seconds, so over the hour its trips add up to about 600. Slower traffic gives
+///     fewer exits, each worth more. If the road cannot hold all the vehicles the prediction needs
+///     (they wait to enter, or the 70-vehicle cap), the count falls behind.
+///   - At this rate, 1 hour = counted so far / share of the hour gone, compared with the dashboard.
+///   - Flyover bikes report each lap (FlyoverBikeSimulation) and are counted the same way.
+///   - At the end of the hour the numbers stop and stay on screen. C (or the Reset button) starts the
+///     hour again; a new prediction, a flyover switch or other test numbers also start it again.
 /// </summary>
 public class JunctionSpawner : MonoBehaviour
 {
@@ -45,6 +60,14 @@ public class JunctionSpawner : MonoBehaviour
     public float vehiclesPerHourPerSpawned = 600f;
     [Tooltip("Upper limit on screen. If the targets add up to more, every type is scaled down by the same factor.")]
     public int maxVehiclesOnRoad = 70;
+
+    [Header("Hour counter")]
+    [Tooltip("Real seconds the on-screen clock takes to go through one hour (300 = 5 minutes).")]
+    public float secondsPerSimulatedHour = 300f;
+    [Tooltip("Hour the clock shows for test numbers (keys 1-5 set it from the preset name). Live predictions use their own hour.")]
+    public int testHour = 8;
+    [Tooltip("Key that resets the counter and starts the hour again. The readout box also has a Reset button.")]
+    public KeyCode resetCounterKey = KeyCode.C;
 
     [Header("Where the counts come from")]
     public CountSource source = CountSource.TestNumbers;
@@ -100,7 +123,7 @@ public class JunctionSpawner : MonoBehaviour
     private int predictedFlyoverBikes;
     private bool flyoverOn;
     private CountSource appliedSource;
-    private int[] appliedTestNumbers = new int[4];
+    private int[] appliedTestNumbers = new int[5];
     private readonly HashSet<string> warnedOnce = new HashSet<string>();
     private readonly List<string> problems = new List<string>();
     private Transform container;
@@ -109,53 +132,171 @@ public class JunctionSpawner : MonoBehaviour
     /// <summary>Sent whenever the targets change (useful for the UI panel).</summary>
     public event Action CountsChanged;
 
-    // ---- Passed-vehicle counter ---------------------------------------------------------------
-    // Every vehicle that drives off the end of the road counts for (predicted / target) real
-    // vehicles, so once every on-screen vehicle of a type has left once, the counter has reached
-    // that type's hourly forecast exactly. It then holds at the forecast until the numbers change.
-    private readonly Dictionary<VehicleType, int> exits = new Dictionary<VehicleType, int>();
-    private int flyoverPassed;
+    // ---- Hour counter -----------------------------------------------------------------------
+    private readonly Dictionary<VehicleType, int> exits = new Dictionary<VehicleType, int>();               // exact, this hour
+    private readonly Dictionary<VehicleType, float> tripSeconds = new Dictionary<VehicleType, float>();     // measured full trips: total seconds
+    private readonly Dictionary<VehicleType, int> trips = new Dictionary<VehicleType, int>();               // measured full trips: how many
+    private readonly Dictionary<LaneCarController, float> enteredAt = new Dictionary<LaneCarController, float>();
+    private int flyoverLaps;                    // exact, this hour
+    private float flyoverLapSeconds;            // measured full laps: total seconds
+    private int flyoverLapsTimed;
+    private float flyoverLapEstimate;           // route length / speed, until a full lap is measured
+    private float flyoverVehiclesPerBike = 600f;
+    private float hourElapsed;
+    private int hourStart = 8;
 
-    /// <summary>Sent every time a vehicle is counted as having passed.</summary>
+    private const int TripsBeforeMeasured = 3;
+    private static readonly Regex HourInName = new Regex(@"(\d{1,2})\s*(AM|PM)", RegexOptions.IgnoreCase);
+
+    /// <summary>Sent every time a vehicle or flyover bike is counted.</summary>
     public event Action PassedChanged;
 
-    /// <summary>Vehicles of this type counted so far this hour (never above the forecast).</summary>
-    public int Passed(VehicleType type)
+    /// <summary>Real seconds one simulated hour takes.</summary>
+    public float SecondsPerHour => Mathf.Max(10f, secondsPerSimulatedHour);
+    /// <summary>0 at the start of the hour, 1 at the end.</summary>
+    public float HourProgress => Mathf.Clamp01(hourElapsed / SecondsPerHour);
+    /// <summary>True once the clock has reached the end of the hour; the numbers then stay as they are.</summary>
+    public bool HourComplete => ForecastTotal > 0 && hourElapsed >= SecondsPerHour;
+    /// <summary>The clock runs and exits are counted while there is traffic and the hour is not over.</summary>
+    public bool Counting => ForecastTotal > 0 && !HourComplete;
+    public int HourStart => hourStart;
+    /// <summary>The simulated time, e.g. "08:34".</summary>
+    public string ClockText
     {
-        int forecast = Predicted(type);
-        int t = Target(type);
-        if (forecast <= 0 || t <= 0 || !exits.TryGetValue(type, out int n) || n <= 0)
-            return 0;
-        return n >= t ? forecast : Mathf.RoundToInt(n * (float)forecast / t);
+        get
+        {
+            int minutes = Mathf.Min(60, Mathf.FloorToInt(HourProgress * 60f));
+            int total = (hourStart * 60 + minutes) % 1440;
+            return $"{total / 60:00}:{total % 60:00}";
+        }
     }
+    public string HourLabel => $"{hourStart % 24:00}:00-{(hourStart + 1) % 24:00}:00";
 
-    /// <summary>Flyover motorcycles counted so far (one lap of the flyover = one bike counted).</summary>
-    public int PassedFlyoverBikes => flyoverPassed;
+    /// <summary>Vehicles of this type that drove onto an end point this hour (exact, not scaled).</summary>
+    public int ReachedEnd(VehicleType type) => exits.TryGetValue(type, out int n) ? n : 0;
+    public int ReachedEndTotal => Types.Sum(ReachedEnd);
+    /// <summary>Flyover bike laps finished this hour (exact, not scaled).</summary>
+    public int FlyoverLaps => flyoverLaps;
 
-    /// <summary>Ground + flyover motorcycles counted so far.</summary>
-    public int PassedAllBikes => Passed(VehicleType.Bike) + flyoverPassed;
+    /// <summary>True once enough vehicles of this type have driven the whole road to use their measured time.</summary>
+    public bool CrossingTimeMeasured(VehicleType type) => trips.TryGetValue(type, out int n) && n >= TripsBeforeMeasured;
+    /// <summary>Average seconds from entering the road to reaching the end (measured; estimated until measured).</summary>
+    public float AverageCrossingSeconds(VehicleType type) =>
+        CrossingTimeMeasured(type) ? tripSeconds[type] / trips[type] : EstimatedCrossingSeconds(type);
+    /// <summary>Real vehicles one exit stands for: 600 x crossing time / hour length.</summary>
+    public float WorthPerExit(VehicleType type) => Mathf.Max(1f, vehiclesPerHourPerSpawned) * AverageCrossingSeconds(type) / SecondsPerHour;
+    /// <summary>Average seconds a flyover bike takes for one lap (measured; route length / speed until measured).</summary>
+    public float AverageFlyoverLapSeconds => flyoverLapsTimed > 0 ? flyoverLapSeconds / flyoverLapsTimed : flyoverLapEstimate;
+    /// <summary>Real vehicles one flyover lap stands for: 600 x lap time / hour length.</summary>
+    public float WorthPerFlyoverLap => flyoverVehiclesPerBike * AverageFlyoverLapSeconds / SecondsPerHour;
 
-    /// <summary>The hourly forecast for ground + flyover motorcycles.</summary>
-    public int ForecastAllBikes => Predicted(VehicleType.Bike) + predictedFlyoverBikes;
+    /// <summary>Real vehicles of this type counted this hour (exits x worth per exit).</summary>
+    public int Counted(VehicleType type) => Mathf.RoundToInt(ReachedEnd(type) * WorthPerExit(type));
+    public int CountedGround => Types.Sum(Counted);
+    public int CountedFlyover => Mathf.RoundToInt(flyoverLaps * WorthPerFlyoverLap);
+    public int CountedTotal => CountedGround + CountedFlyover;
 
-    public int PassedTotal => Types.Sum(Passed) + flyoverPassed;
+    /// <summary>The dashboard's hourly number for the ground road (after the flyover takes its bikes).</summary>
+    public int ForecastGround => Types.Sum(Predicted);
+    /// <summary>The dashboard's hourly number for the whole junction (before the flyover).</summary>
     public int ForecastTotal => Types.Sum(Predicted) + predictedFlyoverBikes;
-    public bool HourComplete => ForecastTotal > 0 && PassedTotal >= ForecastTotal;
+    /// <summary>What the whole hour comes to at the rate counted so far; -1 until 10% of the hour has gone.</summary>
+    public int ProjectedHourTotal => HourComplete ? CountedTotal
+                                   : HourProgress >= 0.1f ? Mathf.RoundToInt(CountedTotal / HourProgress) : -1;
+    /// <summary>ProjectedHourTotal as a % of the dashboard; -1 until 10% of the hour has gone.</summary>
+    public float MatchPercent => ProjectedHourTotal < 0 || ForecastTotal <= 0 ? -1f : 100f * ProjectedHourTotal / ForecastTotal;
 
-    /// <summary>Called by the flyover simulation each time a flyover bike finishes a lap.</summary>
-    public void RegisterFlyoverPass(int vehiclesRepresented)
+    // Older names, still used by TrafficHUD.
+    public int Passed(VehicleType type) => Counted(type);
+    public int PassedFlyoverBikes => CountedFlyover;
+    public int PassedAllBikes => Counted(VehicleType.Bike) + CountedFlyover;
+    public int ForecastAllBikes => Predicted(VehicleType.Bike) + predictedFlyoverBikes;
+    public int PassedTotal => CountedTotal;
+
+    /// <summary>
+    /// Called by the flyover simulation each time a flyover bike finishes a lap.
+    /// measuredSeconds: how long that lap took (0 if unknown, e.g. the first lap, which starts part-way round).
+    /// fullLapSeconds: route length / speed. vehiclesPerHourPerBike: what one flyover bike stands for (600).
+    /// </summary>
+    public void RegisterFlyoverLap(float measuredSeconds, float fullLapSeconds, float vehiclesPerHourPerBike)
     {
-        flyoverPassed = Mathf.Min(predictedFlyoverBikes, flyoverPassed + Mathf.Max(1, vehiclesRepresented));
+        if (!Counting)
+            return;
+
+        flyoverLaps++;
+        flyoverVehiclesPerBike = Mathf.Max(1f, vehiclesPerHourPerBike);
+        if (measuredSeconds > 0f)
+        {
+            flyoverLapSeconds += measuredSeconds;
+            flyoverLapsTimed++;
+        }
+        else if (fullLapSeconds > 0f)
+        {
+            flyoverLapEstimate = fullLapSeconds;
+        }
         PassedChanged?.Invoke();
     }
 
-    /// <summary>Start counting again from zero (also happens automatically when the forecast changes).</summary>
+    /// <summary>Older name: one flyover lap with no timing (counted at the average lap time).</summary>
+    public void RegisterFlyoverPass(int vehiclesRepresented) => RegisterFlyoverLap(0f, 0f, vehiclesRepresented);
+
+    /// <summary>Counter back to zero and the clock back to the start of the hour.</summary>
+    [ContextMenu("Reset hour counter")]
     public void ResetPassed()
     {
         foreach (VehicleType type in Types)
             exits[type] = 0;
-        flyoverPassed = 0;
+        flyoverLaps = 0;
+        hourElapsed = 0f;
         PassedChanged?.Invoke();
+    }
+
+    /// <summary>Forget the measured crossing and lap times (the traffic changed, so they will be different).</summary>
+    private void ResetCrossingTimes()
+    {
+        foreach (VehicleType type in Types)
+        {
+            tripSeconds[type] = 0f;
+            trips[type] = 0;
+        }
+        flyoverLapSeconds = 0f;
+        flyoverLapsTimed = 0;
+    }
+
+    /// <summary>
+    /// Until a few vehicles have driven the whole road: lane length at a speed half way between the
+    /// vehicle's own and the slowest vehicle using that lane (no overtaking), plus the average red-light wait.
+    /// </summary>
+    private float EstimatedCrossingSeconds(VehicleType type)
+    {
+        if (!templatesByType.TryGetValue(type, out List<VehicleInfo> own) || own.Count == 0 || lanes == null)
+            return 0f;
+        List<JunctionLane> allowed = lanes.Where(lane => lane != null && lane.Allows(type)).ToList();
+        float ownSpeed = own.Average(t => t.baseSpeed);
+        if (allowed.Count == 0 || ownSpeed <= 0.01f)
+            return 0f;
+
+        float half = own.Average(t => t.HalfLength);
+        float total = 0f;
+        foreach (JunctionLane lane in allowed)
+        {
+            float slowest = ownSpeed;
+            foreach (VehicleType other in Types)
+            {
+                if (lane.Allows(other) && Predicted(other) > 0 && templatesByType[other].Count > 0)
+                    slowest = Mathf.Min(slowest, templatesByType[other].Average(t => t.baseSpeed));
+            }
+
+            float distance = Mathf.Max(0f, lane.Length - half - 0.05f - 2f);   // the vehicle leaves 2 before the end point
+            float redWait = 0f;
+            if (lane.signal != null)
+            {
+                float cycle = lane.signal.redTime + lane.signal.yellowTime + lane.signal.greenTime;
+                redWait = cycle > 0f ? lane.signal.redTime * lane.signal.redTime / (2f * cycle) : 0f;
+            }
+            total += 0.5f * (distance / ownSpeed + distance / Mathf.Max(0.01f, slowest)) + redWait;
+        }
+        return total / allowed.Count;
     }
 
     // ---- Numbers for the UI panel -------------------------------------------------------------
@@ -183,6 +324,8 @@ public class JunctionSpawner : MonoBehaviour
             predicted[type] = 0;
             target[type] = 0;
             exits[type] = 0;
+            tripSeconds[type] = 0f;
+            trips[type] = 0;
             templatesByType[type] = new List<VehicleInfo>();
         }
     }
@@ -335,6 +478,9 @@ public class JunctionSpawner : MonoBehaviour
             RecalculateTargets();
         }
 
+        if (Counting)
+            hourElapsed = Mathf.Min(SecondsPerHour, hourElapsed + Time.deltaTime);
+
         if (Time.time >= nextAttempt)
         {
             nextAttempt = Time.time + Mathf.Max(0.02f, retryInterval);
@@ -347,6 +493,9 @@ public class JunctionSpawner : MonoBehaviour
 #if ENABLE_LEGACY_INPUT_MANAGER
         if (Input.GetKeyDown(toggleReadoutKey))
             showReadout = !showReadout;
+
+        if (Input.GetKeyDown(resetCounterKey))
+            ResetPassed();
 
         KeyCode[] presetKeys = { KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3, KeyCode.Alpha4, KeyCode.Alpha5 };
         for (int i = 0; i < presetKeys.Length && presets != null && i < presets.Length; i++)
@@ -369,12 +518,21 @@ public class JunctionSpawner : MonoBehaviour
         testBuses = preset.buses;
         testTrucks = preset.trucks;
         source = CountSource.TestNumbers;
+
+        Match hour = HourInName.Match(preset.name ?? "");   // "Low (Fri 3 AM)" -> 3
+        if (hour.Success)
+        {
+            testHour = int.Parse(hour.Groups[1].Value) % 12;
+            if (hour.Groups[2].Value.ToUpperInvariant() == "PM")
+                testHour += 12;
+        }
+
         Debug.Log($"JunctionSpawner: test preset {index + 1}, {preset.name}.");
     }
 
     private bool TestNumbersChanged()
     {
-        int[] now = { testCars, testBikes, testBuses, testTrucks };
+        int[] now = { testCars, testBikes, testBuses, testTrucks, testHour };
         if (now.SequenceEqual(appliedTestNumbers))
             return false;
         appliedTestNumbers = now;
@@ -385,7 +543,7 @@ public class JunctionSpawner : MonoBehaviour
     // Live prediction (TrafficAPIManager)
     // ==========================================================================================
 
-    private int liveCars, liveBuses, liveTrucks, liveGroundBikes, liveFlyoverBikes, liveAllBikes;
+    private int liveCars, liveBuses, liveTrucks, liveGroundBikes, liveFlyoverBikes, liveAllBikes, liveHour = 8;
     private bool liveFlyoverOn;
     private string liveLabel = "waiting for Flask";
 
@@ -395,6 +553,7 @@ public class JunctionSpawner : MonoBehaviour
         liveBuses = prediction.buses;
         liveTrucks = prediction.trucks;
         liveAllBikes = prediction.motorcycles;
+        liveHour = prediction.hour;
         liveLabel = $"{prediction.road}, {TrafficAPIManager.DayName(prediction.day_num)} {prediction.hour:00}:00, {prediction.model}";
         lastError = null;
         if (source == CountSource.LivePrediction)
@@ -423,6 +582,7 @@ public class JunctionSpawner : MonoBehaviour
     {
         var oldPredicted = Types.Select(t => Predicted(t)).ToArray();
         int oldFlyover = predictedFlyoverBikes;
+        int oldHour = hourStart;
 
         if (source == CountSource.LivePrediction)
         {
@@ -433,6 +593,7 @@ public class JunctionSpawner : MonoBehaviour
             predictedFlyoverBikes = liveFlyoverBikes;
             flyoverOn = liveFlyoverOn;
             sourceLabel = "Live: " + liveLabel;
+            hourStart = ((liveHour % 24) + 24) % 24;
         }
         else
         {
@@ -443,6 +604,7 @@ public class JunctionSpawner : MonoBehaviour
             predictedFlyoverBikes = 0;
             flyoverOn = false;
             sourceLabel = "Test numbers";
+            hourStart = ((testHour % 24) + 24) % 24;
         }
 
         float ratio = Mathf.Max(1f, vehiclesPerHourPerSpawned);
@@ -459,8 +621,10 @@ public class JunctionSpawner : MonoBehaviour
         foreach (VehicleType type in Types)
             target[type] = next[type];
 
-        if (changed || forecastChanged)
-            ResetPassed();   // new hour / new model / flyover toggled: start counting again
+        if (forecastChanged)
+            ResetCrossingTimes();   // different traffic, different crossing times
+        if (changed || forecastChanged || hourStart != oldHour)
+            ResetPassed();          // new hour / new model / flyover toggled: start counting again
 
         if (!changed)
             return;
@@ -518,6 +682,8 @@ public class JunctionSpawner : MonoBehaviour
             active[type].RemoveAll(v => v == null);
         leaving.RemoveWhere(v => v == null);
         spawnedByMe.RemoveWhere(v => v == null);
+        foreach (LaneCarController gone in enteredAt.Keys.Where(v => v == null).ToList())
+            enteredAt.Remove(gone);
 
         // 1. Too many of a type: un-needed vehicles leave (or vanish if Remove Extras Instantly).
         if (removeExtrasInstantly)
@@ -602,7 +768,7 @@ public class JunctionSpawner : MonoBehaviour
                 if (TryPlaceInAnyGap(lane, template, half, gap))
                     return true;
             }
-            else if (TryPlace(lane, template, half + 0.05f, half, gap))
+            else if (TryPlace(lane, template, half + 0.05f, half, gap, true))
             {
                 return true;   // entered at the start of the lane
             }
@@ -660,14 +826,15 @@ public class JunctionSpawner : MonoBehaviour
         {
             float length = range.y - range.x;
             if (pick <= length)
-                return TryPlace(lane, template, range.x + Mathf.Clamp(pick, 0.01f, length - 0.01f), half, gap);
+                return TryPlace(lane, template, range.x + Mathf.Clamp(pick, 0.01f, length - 0.01f), half, gap, false);
             pick -= length;
         }
 
         return false;
     }
 
-    private bool TryPlace(JunctionLane lane, VehicleInfo template, float distance, float half, float gap)
+    /// <param name="atStart">True if the vehicle enters at the start of the road, so its whole trip can be timed.</param>
+    private bool TryPlace(JunctionLane lane, VehicleInfo template, float distance, float half, float gap, bool atStart)
     {
         if (lane.IsNoSpawn(distance, half))
             return false;
@@ -693,6 +860,8 @@ public class JunctionSpawner : MonoBehaviour
         driver.ReachedEnd += OnVehicleReachedEnd;
         active[type].Add(driver);
         spawnedByMe.Add(driver);
+        if (atStart)
+            enteredAt[driver] = Time.time;
 
         if (spawnCounter == 1)
             LogFirstVehicle(vehicle, lane);
@@ -726,9 +895,20 @@ public class JunctionSpawner : MonoBehaviour
 
     private void OnVehicleReachedEnd(LaneCarController vehicle)
     {
-        if (vehicle.Info != null)
+        // Extra vehicles from earlier traffic that are driving off (Leaving) are not counted:
+        // the counter started again when the traffic changed.
+        if (vehicle.Info != null && Counting && !leaving.Contains(vehicle))
         {
-            exits[vehicle.Info.type]++;
+            VehicleType type = vehicle.Info.type;
+            exits[type]++;
+
+            // Whole trips (entered at the start) give the measured crossing time.
+            if (enteredAt.TryGetValue(vehicle, out float entered))
+            {
+                tripSeconds[type] += Time.time - entered;
+                trips[type]++;
+            }
+
             PassedChanged?.Invoke();
         }
 
@@ -740,6 +920,7 @@ public class JunctionSpawner : MonoBehaviour
         vehicle.ReachedEnd -= OnVehicleReachedEnd;
         leaving.Remove(vehicle);
         spawnedByMe.Remove(vehicle);
+        enteredAt.Remove(vehicle);
         foreach (VehicleType type in Types)
             active[type].Remove(vehicle);
     }
@@ -797,24 +978,22 @@ public class JunctionSpawner : MonoBehaviour
         GUILayout.BeginArea(new Rect(10f, 10f, 530f, Screen.height - 20f));
         GUILayout.BeginVertical(GUI.skin.box);
         GUILayout.Label("<b>Junction spawner</b>   " + sourceLabel +
-                        $"\n1 vehicle on screen = {vehiclesPerHourPerSpawned:0} per hour", readoutStyle);
+                        $"\n1 vehicle on screen = {vehiclesPerHourPerSpawned:0} per hour   |   1 hour = {HourLengthText()}", readoutStyle);
 
-        Row("<b>Type</b>", "<b>Predicted</b>", "<b>Target</b>", "<b>On road</b>", "<b>Waiting*</b>", "<b>Leaving</b>", "<b>Passed</b>");
+        // The hour counter (what the panel shows), then the spawner's own table.
+        GUILayout.Label(ClockLine(), readoutStyle);
+        DrawProgressBar(HourProgress);
+        GUILayout.Label(CounterText(), readoutStyle);
+        if (GUILayout.Button($"Reset counter ({resetCounterKey})"))
+            ResetPassed();
+        GUILayout.Space(4f);
+
+        Row("<b>Type</b>", "<b>Predicted</b>", "<b>Target</b>", "<b>On road</b>", "<b>Waiting*</b>", "<b>Leaving</b>");
         foreach (VehicleType type in Types)
             Row(type == VehicleType.Bike ? "Bikes*" : GroupName(type), Predicted(type).ToString(), Target(type).ToString(),
-                OnRoad(type).ToString(), Waiting(type).ToString(), Leaving(type).ToString(), Passed(type).ToString());
+                OnRoad(type).ToString(), Waiting(type).ToString(), Leaving(type).ToString());
         Row("<b>Total</b>", Types.Sum(Predicted).ToString(), Types.Sum(Target).ToString(), Types.Sum(OnRoad).ToString(),
-            Types.Sum(Waiting).ToString(), Types.Sum(Leaving).ToString(), Types.Sum(Passed).ToString());
-
-        // Passed = vehicles that have driven off the end of the road this hour, scaled up so it
-        // reaches the dashboard's hourly forecast once every on-screen vehicle has left once.
-        GUILayout.Space(4f);
-        if (predictedFlyoverBikes > 0)
-            GUILayout.Label($"Flyover bikes passed: <b>{PassedFlyoverBikes} / {predictedFlyoverBikes}</b>", readoutStyle);
-        GUILayout.Label($"<b>Total passed this hour: {PassedTotal} / {ForecastTotal}</b>" +
-                        (HourComplete ? "   (forecast reached)" : ""), readoutStyle);
-        GUILayout.HorizontalSlider(PassedTotal, 0f, Mathf.Max(1, ForecastTotal));
-        GUILayout.Space(4f);
+            Types.Sum(Waiting).ToString(), Types.Sum(Leaving).ToString());
 
         GUILayout.Label(ReadoutFooter(), readoutStyle);
         GUILayout.EndVertical();
@@ -826,15 +1005,30 @@ public class JunctionSpawner : MonoBehaviour
         GUILayout.BeginHorizontal();
         GUILayout.Label(cells[0], readoutStyle, GUILayout.Width(70f));
         for (int i = 1; i < cells.Length; i++)
-            GUILayout.Label(cells[i], readoutStyle, GUILayout.Width(i == 1 ? 80f : i == 6 ? 70f : 62f));
+            GUILayout.Label(cells[i], readoutStyle, GUILayout.Width(i == 1 ? 80f : 62f));
         GUILayout.EndHorizontal();
     }
 
+    private static void DrawProgressBar(float fraction)
+    {
+        Rect bar = GUILayoutUtility.GetRect(300f, 8f, GUILayout.ExpandWidth(true));
+        Color old = GUI.color;
+        GUI.color = new Color(1f, 1f, 1f, 0.2f);
+        GUI.DrawTexture(bar, Texture2D.whiteTexture);
+        GUI.color = new Color(0.42f, 1f, 0.56f);
+        GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(fraction), bar.height), Texture2D.whiteTexture);
+        GUI.color = old;
+    }
+
+    /// <summary>The readout as text (also used by the tests).</summary>
     public string BuildReadout()
     {
         var text = new StringBuilder();
         text.AppendLine("<b>Junction spawner</b>   " + sourceLabel);
-        text.AppendLine($"1 vehicle on screen = {vehiclesPerHourPerSpawned:0} per hour");
+        text.AppendLine($"1 vehicle on screen = {vehiclesPerHourPerSpawned:0} per hour   |   1 hour = {HourLengthText()}");
+        int filled = Mathf.RoundToInt(HourProgress * 10f);
+        text.AppendLine(ClockLine() + "   [" + new string('#', filled) + new string('-', 10 - filled) + "]");
+        text.AppendLine(CounterText());
         text.AppendLine();
         text.AppendLine("<b>Type        Predicted   Target   On road   Waiting*  Leaving</b>");
         foreach (VehicleType type in Types)
@@ -847,6 +1041,72 @@ public class JunctionSpawner : MonoBehaviour
         int onRoadTotal = Types.Sum(OnRoad);
         text.AppendLine($"{"Total",-10}  {Types.Sum(Predicted),9}   {targetTotal,6}   {onRoadTotal,7}   {Types.Sum(Waiting),7}   {Types.Sum(Leaving),7}");
         text.Append(ReadoutFooter());
+        return text.ToString();
+    }
+
+    private string HourLengthText()
+    {
+        int seconds = Mathf.RoundToInt(SecondsPerHour);
+        return $"{seconds / 60}:{seconds % 60:00} min";
+    }
+
+    private string ClockLine()
+    {
+        if (ForecastTotal <= 0)
+            return "<b>Clock --:--</b>   waiting for traffic numbers";
+        if (HourComplete)
+            return $"<b>Clock {ClockText}</b>   (hour complete)";
+        return $"<b>Clock {ClockText}</b>   (hour {HourProgress * 100f:0}% done)";
+    }
+
+    /// <summary>A whole number with thousands separators, e.g. 20,792.</summary>
+    private static string N(int value) => value.ToString("N0", CultureInfo.InvariantCulture);
+
+    private static string MatchColour(float percent)
+    {
+        return percent >= 95f && percent <= 105f ? "#6bff8f" : percent >= 85f && percent <= 115f ? "#ffcc66" : "#ff6b6b";
+    }
+
+    /// <summary>The hour counter lines: exact exits, counted, projection and match, flyover, worth per exit.</summary>
+    private string CounterText()
+    {
+        var text = new StringBuilder();
+        bool showFlyover = flyoverOn && predictedFlyoverBikes > 0;
+
+        text.AppendLine("<b>Reached end points (actual):</b>   " +
+                        string.Join(" | ", Types.Select(t => $"{GroupName(t)} {ReachedEnd(t)}")) + $"  = {ReachedEndTotal}" +
+                        (showFlyover ? $"   (flyover laps {flyoverLaps})" : ""));
+        text.AppendLine($"<b>Counted for the hour:</b>   {N(CountedTotal)} / {N(ForecastTotal)}");
+
+        int projected = ProjectedHourTotal;
+        if (HourComplete)
+        {
+            text.AppendLine($"<b>Hour complete ({HourLabel}):</b> counted {N(CountedTotal)} of {N(ForecastTotal)}   " +
+                            $"<color={MatchColour(MatchPercent)}>({MatchPercent:0.0}% match)</color>   " +
+                            $"- press {resetCounterKey} or Reset to run it again");
+        }
+        else if (projected >= 0)
+        {
+            text.AppendLine($"<b>At this rate, 1 hour = {N(projected)}</b>   " +
+                            $"<color={MatchColour(MatchPercent)}>(dashboard {N(ForecastTotal)}, {MatchPercent:0.0}% match)</color>");
+        }
+        else if (ForecastTotal > 0)
+        {
+            text.AppendLine("<b>At this rate, 1 hour =</b> ... (shown after the first 6 minutes)");
+        }
+
+        if (showFlyover)
+        {
+            text.AppendLine($"Before flyover {N(ForecastTotal)}  ->  After {N(ForecastGround)}   Bikes diverted {N(predictedFlyoverBikes)}");
+            text.AppendLine($"Ground counted {N(CountedGround)} / {N(ForecastGround)}   |   Flyover counted {N(CountedFlyover)} / {N(predictedFlyoverBikes)}");
+            if (flyoverLaps == 0 && HourProgress >= 0.1f)
+                text.AppendLine("<color=#ffcc66>No flyover lap counted yet: is FlyoverBikeSimulation in the scene with its route points and bike prefab?</color>");
+        }
+
+        // How much one exit is worth, so the counted number can be checked by hand.
+        text.Append($"<i>1 exit = {vehiclesPerHourPerSpawned:0} x crossing time / {SecondsPerHour:0} s:  " +
+                    string.Join(" | ", Types.Select(t => $"{GroupName(t).ToLower()} {AverageCrossingSeconds(t):0.0} s{(CrossingTimeMeasured(t) ? "" : " (est.)")} = {WorthPerExit(t):0}")) +
+                    (showFlyover ? $" | flyover lap {AverageFlyoverLapSeconds:0.0} s = {WorthPerFlyoverLap:0}" : "") + "</i>");
         return text.ToString();
     }
 
@@ -876,7 +1136,7 @@ public class JunctionSpawner : MonoBehaviour
         text.AppendLine(settled ? "<color=#6bff8f>On road = target for every type</color>"
                         : balanced && Types.All(t => Leaving(t) == 0) ? "<color=#ffcc66>Some vehicles queued to enter</color>"
                         : "Settling...");
-        text.Append("<i>Keys: 1-5 test presets | G hide this box</i>");
+        text.Append($"<i>Keys: 1-5 test presets | {resetCounterKey} reset counter | G hide this box</i>");
         return text.ToString();
     }
 }

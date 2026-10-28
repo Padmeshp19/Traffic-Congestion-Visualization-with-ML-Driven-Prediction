@@ -6321,6 +6321,9 @@ MonoBehaviour:
   - {fileID: 5493009096274591459, guid: 52e118cce8612254797a616913299888, type: 3}
   vehiclesPerHourPerSpawned: 600
   maxVehiclesOnRoad: 70
+  secondsPerSimulatedHour: 300
+  testHour: 8
+  resetCounterKey: 99
   source: 1
   trafficAPI: {fileID: 0}
   testCars: 7104
@@ -15198,6 +15201,7 @@ GameObject:
   - component: {fileID: 716971632}
   - component: {fileID: 716971631}
   - component: {fileID: 716971633}
+  - component: {fileID: 716971634}
   m_Layer: 0
   m_Name: TrafficAPI
   m_TagString: Untagged
@@ -15263,6 +15267,22 @@ MonoBehaviour:
   showOverlay: 1
   toggleOverlayKey: 116
   logPassedChecks: 1
+--- !u!114 &716971634
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 716971630}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce35f8289aeeca8468af6a493bedd101, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DashboardSelectionSync
+  api: {fileID: 716971631}
+  followDashboard: 1
+  followFlyover: 1
+  pollSeconds: 1
 --- !u!1 &719799511
 GameObject:
   m_ObjectHideFlags: 0
@@ -36858,6 +36878,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FlyoverBikeSimulation
   trafficAPI: {fileID: 0}
+  counter: {fileID: 0}
   routePoints:
   - {fileID: 375088984}
   - {fileID: 1685753607}

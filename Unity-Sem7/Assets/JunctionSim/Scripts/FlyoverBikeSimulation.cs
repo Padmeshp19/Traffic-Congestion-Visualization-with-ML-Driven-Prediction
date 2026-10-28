@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,7 +5,7 @@ public class FlyoverBikeSimulation : MonoBehaviour
 {
     [Header("References")]
     public TrafficAPIManager trafficAPI;
-    [Tooltip("Counts a pass every time a flyover bike finishes a lap. Found automatically if empty.")]
+    [Tooltip("Counts every lap a flyover bike finishes, worth 600 x lap time / hour length. Found automatically if empty.")]
     public JunctionSpawner counter;
     public Transform[] routePoints;
     public GameObject[] bikePrefabs;
@@ -99,8 +98,9 @@ public class FlyoverBikeSimulation : MonoBehaviour
 
         mover.LapCompleted += () =>
         {
+            // Counted the same way as the ground road: one lap is worth 600 x lap time / hour length.
             if (counter != null)
-                counter.RegisterFlyoverPass(Mathf.RoundToInt(vehiclesPerBike));
+                counter.RegisterFlyoverLap(mover.LastLapSeconds, mover.FullLapSeconds, vehiclesPerBike);
         };
 
         bike.name = "FlyoverBike_" + (index + 1);
