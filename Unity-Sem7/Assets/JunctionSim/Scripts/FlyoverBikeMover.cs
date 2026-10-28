@@ -3,6 +3,9 @@ using UnityEngine;
 
 public class FlyoverBikeMover : MonoBehaviour
 {
+    /// <summary>Sent each time the bike completes a lap of the flyover.</summary>
+    public event System.Action LapCompleted;
+
     private Transform[] points;
     private float speed;
     private float distanceTravelled;
@@ -54,6 +57,10 @@ public class FlyoverBikeMover : MonoBehaviour
             return;
 
         distanceTravelled += speed * Time.deltaTime;
+
+        if (distanceTravelled >= totalLength)
+            LapCompleted?.Invoke();
+
         distanceTravelled =
             Mathf.Repeat(distanceTravelled, totalLength);
 

@@ -438,6 +438,17 @@
   }
   .feasibility-verdict strong {color:var(--yellow)}
   .feasibility-note {font-size:12px;color:var(--muted);line-height:1.65;margin-top:12px}
+  /* Recommendation (demand + site readiness) */
+  .reco-card {margin-top:14px;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,0.02);font-size:13px;line-height:1.6}
+  .reco-card .reco-head {font-weight:700;font-size:15px;margin-bottom:6px}
+  .reco-card .reco-row {color:var(--muted)} .reco-card .reco-row b {color:var(--text)}
+  .reco-card ul {margin:6px 0 0 18px;padding:0;color:var(--muted);font-size:12px}
+  .reco-card .reco-small {margin-top:8px;font-size:11.5px;color:var(--muted);line-height:1.55;font-style:italic}
+  .reco-table-wrap {margin-top:14px;overflow-x:auto}
+  .reco-table {width:100%;border-collapse:collapse;font-size:12px}
+  .reco-table th,.reco-table td {padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+  .reco-table th {color:var(--muted);font-weight:600}
+  .reco-table tr.reco-selected td {background:rgba(0,212,255,0.08)}
 
   /* Loading overlay */
   .loading { display:none; }
@@ -763,7 +774,7 @@
 
   <!-- PRELIMINARY FEASIBILITY CONCLUSION -->
   <section class="feasibility-panel" aria-labelledby="feasibilityTitle">
-    <div class="panel-title"><span style="background:var(--yellow)"></span><span id="feasibilityTitle">Flyover Feasibility — Preliminary Conclusion</span></div>
+    <div class="panel-title"><span style="background:var(--yellow)"></span><b id="feasibilityTitle" style="font-weight:inherit">Flyover Feasibility — Preliminary Conclusion</b></div>
     <p style="font-size:13px;color:var(--muted);line-height:1.6">
       This assessment compares the selected model's predicted traffic for all 7 days and 24 hours with the 30% motorcycle-diversion scenario. It estimates traffic-volume impact only; it is not a construction approval.
     </p>
@@ -785,6 +796,7 @@
       <strong>Construction feasibility: undetermined.</strong>
       Loading the selected road's scenario comparison…
     </div>
+    <div id="recoPanel"></div>
     <p class="feasibility-note" id="feasibilityEvidence">
       The construction decision requires site-specific road width/right-of-way, ramp and junction geometry, structural and geotechnical review, safety/accessibility checks, utilities, environmental impact, construction and maintenance costs, and approval from the relevant authorities. These inputs are not available in the current traffic-prediction dataset.
     </p>
@@ -1086,6 +1098,60 @@ function renderBest(dayRow, d) {
   $('bestTime').innerHTML = `💡 Best time to travel on ${DAYN[d]} (6 AM to 10 PM): <b>${h12(q[1])}</b> with about ${q[0].toLocaleString()} vehicles. Busiest: <b style="color:var(--red)">${h12(b[1])}</b> with about ${b[0].toLocaleString()}.`;
 }
 
+// ---- Recommendation = demand (from the models) + site readiness (data/junction_profiles.json) ----
+const recoCache = {};
+const escHtml = t => String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const RECO_COLORS = {recommended:'var(--green)', second:'var(--yellow)', not_recommended:'var(--red)', provisional:'var(--accent)', withheld:'var(--accent)'};
+const TIER_TEXT = {high:'High bike demand', medium:'Medium bike demand', low:'Low bike demand'};
+
+// Returns {row, data} for the selected road, or null (the old logic is then used as a fallback).
+async function getRecommendation(selectedModel, road) {
+  try {
+    if (!recoCache[selectedModel]) {
+      const r = await fetch('/flyover-recommendation?model=' + encodeURIComponent(selectedModel));
+      if (!r.ok) return null;
+      recoCache[selectedModel] = await r.json();
+    }
+    const data = recoCache[selectedModel];
+    const row = (data.roads || []).find(x => x.road === road);
+    return row ? {row, data} : null;
+  } catch (e) { return null; }
+}
+
+function renderRecoPanel(reco, road) {
+  const {row, data} = reco;
+  const color = RECO_COLORS[row.recommendation_level] || 'var(--text)';
+  const items = (row.open_items || []).map(i => `<li>${escHtml(i)}</li>`).join('');
+  const notes = (data.data_notes || []).map(n => `<li>${escHtml(n)}</li>`).join('');
+  const tr = (data.roads || []).map(x => `
+      <tr class="${x.road === road ? 'reco-selected' : ''}">
+        <td>${x.demand_rank}</td><td>${escHtml(x.road)}</td>
+        <td>${x.avg_bikes_diverted_per_hr.toLocaleString()}</td>
+        <td>${escHtml(TIER_TEXT[x.demand_tier] || x.demand_tier)}</td>
+        <td>${escHtml(x.site_label)}</td>
+        <td style="color:${RECO_COLORS[x.recommendation_level] || 'var(--text)'}">${escHtml(x.recommendation)}</td>
+      </tr>`).join('');
+  const compatible = row.site_status === 'compatible_assumed';
+  $('recoPanel').innerHTML = `
+    <div class="reco-card">
+      <div class="reco-head" style="color:${color}">${escHtml(row.recommendation)}</div>
+      <div class="reco-row"><b>Demand:</b> ${escHtml(TIER_TEXT[row.demand_tier] || row.demand_tier)} &mdash;
+        ${row.avg_bikes_diverted_per_hr.toLocaleString()} motorcycles diverted per hour on average
+        (${row.peak_bikes_diverted_per_hr.toLocaleString()} in peak hours); rank ${row.demand_rank} of ${row.roads_ranked} roads.</div>
+      <div class="reco-row"><b>Site:</b> ${escHtml(row.site_label)}${row.site_notes ? ' &mdash; ' + escHtml(row.site_notes) : ''}</div>
+      ${items ? `<div class="reco-row" style="margin-top:6px"><b>${compatible ? 'Still to confirm on site:' : 'Needed to conclude:'}</b></div><ul>${items}</ul>` : ''}
+      <div class="reco-small">Note: ${escHtml(compatible ? (data.environment_note || '') : (data.inconclusive_note || ''))}</div>
+    </div>
+    <details class="reco-table-wrap">
+      <summary style="cursor:pointer;color:var(--muted);font-size:12px">Show ranking of all ${data.roads.length} roads</summary>
+      <table class="reco-table">
+        <thead><tr><th>#</th><th>Road</th><th>Bikes diverted / hr</th><th>Demand</th><th>Site</th><th>Recommendation</th></tr></thead>
+        <tbody>${tr}</tbody>
+      </table>
+      ${notes ? `<ul style="margin-top:8px">${notes}</ul>` : ''}
+    </details>`;
+}
+
 // Estimate traffic-volume benefit across all 168 day/hour slots for the selected road.
 // This is a traffic proxy, not a full transport, engineering, or financial feasibility study.
 async function renderFeasibility(road, selectedModel) {
@@ -1139,7 +1205,14 @@ async function renderFeasibility(road, selectedModel) {
 
     reductionEl.textContent = `${reductionPct.toFixed(1)}%`;
     bikesEl.textContent = Math.round(avgBikesDiverted).toLocaleString();
-    if (reductionPct >= 8) {
+    const reco = await getRecommendation(selectedModel, road);
+    if (currentRequest !== feasibilityReqId) return;
+    $('recoPanel').innerHTML = '';
+    if (reco) {
+      trafficVerdictEl.textContent = TIER_TEXT[reco.row.demand_tier] || reco.row.demand_tier;
+      trafficVerdictEl.style.color = reco.row.demand_tier === 'high' ? 'var(--green)'
+        : reco.row.demand_tier === 'medium' ? 'var(--yellow)' : 'var(--red)';
+    } else if (reductionPct >= 8) {
       trafficVerdictEl.textContent = 'Meaningful modelled benefit';
       trafficVerdictEl.style.color = 'var(--green)';
     } else if (reductionPct >= 3) {
@@ -1150,6 +1223,24 @@ async function renderFeasibility(road, selectedModel) {
       trafficVerdictEl.style.color = 'var(--red)';
     }
 
+    if (reco) {
+      const rr = reco.row, th = reco.data.thresholds || {};
+      const reasons = {
+        recommended: `2-wheeler demand is high on both the average and the peak-hour count, and the straight metro-corridor layout supports a 2-wheeler flyover, so a flyover is recommended here.`,
+        second: `2-wheeler demand is medium, so a flyover is justified here but ranks below the high-demand junctions.`,
+        not_recommended: `2-wheeler demand (average and peak-hour) is below the minimum needed to justify a flyover, so it is not recommended here.`,
+        provisional: `Judged on 2-wheeler demand alone (${rr.demand_tier} demand), this is the indicated outcome. It cannot be concluded, however, because no surrounding-environment data is available for this junction yet.`,
+        withheld: `2-wheeler demand is ${rr.demand_tier}, but no surrounding-environment data is available for this junction, so no verdict can be given until it is recorded.`
+      };
+      constructionEl.innerHTML =
+        `<strong>${(rr.recommendation_level === 'withheld' || rr.recommendation_level === 'provisional') ? '' : 'Verdict: '}${escHtml(rr.recommendation)}.</strong> ` +
+        `For <strong>${escHtml(road)}</strong>, the selected ${NAMES[selectedModel]} model estimates about ` +
+        `${rr.avg_bikes_diverted_per_hr.toLocaleString()} motorcycles diverted per hour on average ` +
+        `(${rr.peak_bikes_diverted_per_hr.toLocaleString()} in peak hours) under the assumed 30% diversion, ` +
+        `ranking ${rr.demand_rank} of ${rr.roads_ranked} roads by 2-wheeler demand. ` +
+        (reasons[rr.recommendation_level] || '');
+      renderRecoPanel(reco, road);
+    } else
     constructionEl.innerHTML =
       `<strong>Construction feasibility: not yet determinable.</strong> ` +
       `For <strong>${road}</strong>, the selected ${NAMES[selectedModel]} model estimates a ` +
@@ -1163,7 +1254,9 @@ async function renderFeasibility(road, selectedModel) {
       `The model alone cannot establish whether building a flyover is technically, financially, or legally feasible.`;
 
     $('feasibilityEvidence').textContent =
-      'Decision logic: ≥8% modelled volume reduction = meaningful traffic-impact signal; 3–<8% = modest; <3% = limited. ' +
+      (reco
+        ? `Decision logic: a junction is rated high demand if it reaches both ${reco.data.thresholds.high.avg.toLocaleString()} motorcycles diverted per hour on average and ${reco.data.thresholds.high.peak.toLocaleString()} in peak hours, medium demand at ${reco.data.thresholds.medium.avg.toLocaleString()} and ${reco.data.thresholds.medium.peak.toLocaleString()}, otherwise low. High demand = flyover recommended, medium = recommended as second priority, low = not recommended. Junctions without surrounding-environment data get a provisional verdict from demand alone, which cannot be concluded until their environment data is recorded. `
+        : 'Decision logic: ≥8% modelled volume reduction = meaningful traffic-impact signal; 3–<8% = modest; <3% = limited. ') +
       'These are project screening thresholds, not official engineering standards. ' +
       'Construction feasibility remains unconfirmed until site-specific right-of-way and road width, ramp geometry, structural/geotechnical conditions, road safety, utilities, environmental effects, capital and maintenance costs, and approvals are assessed. ' +
       'The dataset includes generated/derived road profiles. The validation report records video observations for only 4 hours per day across 7 days (28 of 168 day/hour cells), and the generated profiles are not independent site measurements. Validate the estimates with representative field counts before making a planning decision.';

@@ -6,6 +6,8 @@ public class FlyoverBikeSimulation : MonoBehaviour
 {
     [Header("References")]
     public TrafficAPIManager trafficAPI;
+    [Tooltip("Counts a pass every time a flyover bike finishes a lap. Found automatically if empty.")]
+    public JunctionSpawner counter;
     public Transform[] routePoints;
     public GameObject[] bikePrefabs;
 
@@ -22,6 +24,9 @@ public class FlyoverBikeSimulation : MonoBehaviour
     {
         if (trafficAPI == null)
             trafficAPI = FindFirstObjectByType<TrafficAPIManager>();
+
+        if (counter == null)
+            counter = FindFirstObjectByType<JunctionSpawner>();
     }
 
     private void Update()
@@ -91,6 +96,12 @@ public class FlyoverBikeSimulation : MonoBehaviour
             bikeSpeed,
             index * spacing
         );
+
+        mover.LapCompleted += () =>
+        {
+            if (counter != null)
+                counter.RegisterFlyoverPass(Mathf.RoundToInt(vehiclesPerBike));
+        };
 
         bike.name = "FlyoverBike_" + (index + 1);
         spawnedBikes.Add(bike);

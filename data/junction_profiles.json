@@ -1,0 +1,178 @@
+{
+  "_readme": "Site readiness per road. site_status: 'compatible_assumed' = corridor layout suits a 2-wheeler flyover (assumed from layout, NOT field-verified); 'unknown' = no site data yet. To upgrade a road later, edit its entry here - no code change needed.",
+  "roads": {
+    "100 Feet Road": {
+      "site_status": "unknown",
+      "notes": "No site data available yet.",
+      "open_items": []
+    },
+    "Anil Kumble Circle": {
+      "site_status": "unknown",
+      "notes": "No site data available yet.",
+      "open_items": []
+    },
+    "Ballari Road": {
+      "site_status": "unknown",
+      "notes": "No site data available yet.",
+      "open_items": []
+    },
+    "Bommanahalli": {
+      "site_status": "compatible_assumed",
+      "median_type": "metro",
+      "lanes_per_side": 2,
+      "service_road": true,
+      "notes": "Straight road with a metro in the median, 2 lanes each side and a service road. Considered feasible for a 2-wheeler flyover until site data is recorded.",
+      "open_items": [
+        "Pillar spacing and clearance beside the metro viaduct",
+        "Space for ramps and merge/diverge geometry",
+        "Utilities and drainage along the alignment",
+        "Structural/geotechnical review",
+        "Road-safety audit and statutory approvals"
+      ]
+    },
+    "Bommasandra": {
+      "site_status": "compatible_assumed",
+      "median_type": "metro",
+      "lanes_per_side": 2,
+      "service_road": true,
+      "notes": "Straight road with a metro in the median, 2 lanes each side and a service road. Considered feasible for a 2-wheeler flyover until site data is recorded.",
+      "open_items": [
+        "Pillar spacing and clearance beside the metro viaduct",
+        "Space for ramps and merge/diverge geometry",
+        "Utilities and drainage along the alignment",
+        "Structural/geotechnical review",
+        "Road-safety audit and statutory approvals"
+      ]
+    },
+    "CMH Road": {
+      "site_status": "unknown",
+      "notes": "No site data available yet.",
+      "open_items": []
+    },
+    "Electronic City": {
+      "site_status": "compatible_assumed",
+      "median_type": "metro",
+      "lanes_per_side": 2,
+      "service_road": true,
+      "notes": "Straight road with a metro in the median, 2 lanes each side and a service road. Considered feasible for a 2-wheeler flyover until site data is recorded.",
+      "open_items": [
+        "Pillar spacing and clearance beside the metro viaduct",
+        "Space for ramps and merge/diverge geometry",
+        "Utilities and drainage along the alignment",
+        "Structural/geotechnical review",
+        "Road-safety audit and statutory approvals"
+      ]
+    },
+    "HSR Layout": {
+      "site_status": "compatible_assumed",
+      "median_type": "metro",
+      "lanes_per_side": 2,
+      "service_road": true,
+      "notes": "Straight road with a metro in the median, 2 lanes each side and a service road. Considered feasible for a 2-wheeler flyover until site data is recorded.",
+      "open_items": [
+        "Pillar spacing and clearance beside the metro viaduct",
+        "Space for ramps and merge/diverge geometry",
+        "Utilities and drainage along the alignment",
+        "Structural/geotechnical review",
+        "Road-safety audit and statutory approvals"
+      ]
+    },
+    "Hebbal Flyover": {
+      "site_status": "unknown",
+      "notes": "No site data available yet.",
+      "open_items": []
+    },
+    "Hosa Road": {
+      "site_status": "compatible_assumed",
+      "median_type": "metro",
+      "lanes_per_side": 2,
+      "service_road": true,
+      "notes": "Straight road with a metro in the median, 2 lanes each side and a service road. Considered feasible for a 2-wheeler flyover until site data is recorded.",
+      "open_items": [
+        "Pillar spacing and clearance beside the metro viaduct",
+        "Space for ramps and merge/diverge geometry",
+        "Utilities and drainage along the alignment",
+        "Structural/geotechnical review",
+        "Road-safety audit and statutory approvals"
+      ]
+    },
+    "Hosur Road": {
+      "site_status": "unknown",
+      "notes": "No site data available yet.",
+      "open_items": []
+    },
+    "ITPL Main Road": {
+      "site_status": "unknown",
+      "notes": "No site data available yet.",
+      "open_items": []
+    },
+    "Jayanagar 4th Block": {
+      "site_status": "unknown",
+      "notes": "No site data available yet.",
+      "open_items": []
+    },
+    "Kudlu Gate": {
+      "site_status": "compatible_assumed",
+      "median_type": "metro",
+      "lanes_per_side": 2,
+      "service_road": true,
+      "notes": "Straight road with a metro in the median, 2 lanes each side and a service road. Considered feasible for a 2-wheeler flyover until site data is recorded.",
+      "open_items": [
+        "Pillar spacing and clearance beside the metro viaduct",
+        "Space for ramps and merge/diverge geometry",
+        "Utilities and drainage along the alignment",
+        "Structural/geotechnical review",
+        "Road-safety audit and statutory approvals"
+      ]
+    },
+    "Marathahalli Bridge": {
+      "site_status": "unknown",
+      "notes": "No site data available yet.",
+      "open_items": []
+    },
+    "Sarjapur Road": {
+      "site_status": "unknown",
+      "notes": "No site data available yet.",
+      "open_items": []
+    },
+    "Silk Board Junction": {
+      "site_status": "compatible_assumed",
+      "median_type": "metro",
+      "lanes_per_side": 2,
+      "service_road": true,
+      "notes": "Straight road with a metro in the median, 2 lanes each side and a service road. Considered feasible for a 2-wheeler flyover until site data is recorded.",
+      "open_items": [
+        "Pillar spacing and clearance beside the metro viaduct",
+        "Space for ramps and merge/diverge geometry",
+        "Utilities and drainage along the alignment",
+        "Structural/geotechnical review",
+        "Road-safety audit and statutory approvals"
+      ]
+    },
+    "Sony World Junction": {
+      "site_status": "unknown",
+      "notes": "No site data available yet.",
+      "open_items": []
+    },
+    "South End Circle": {
+      "site_status": "unknown",
+      "notes": "No site data available yet.",
+      "open_items": []
+    },
+    "Trinity Circle": {
+      "site_status": "unknown",
+      "notes": "No site data available yet.",
+      "open_items": []
+    },
+    "Tumkur Road": {
+      "site_status": "unknown",
+      "notes": "No site data available yet.",
+      "open_items": []
+    },
+    "Yeshwanthpur Circle": {
+      "site_status": "unknown",
+      "notes": "No site data available yet.",
+      "open_items": []
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "_readme": "Screening thresholds, not engineering standards - tune them with the team. A road gets the demand tier only if it meets BOTH its average and its peak-hour motorcycles-diverted-per-hour minimums (all 168 day/hour slots; peak = hours 7-10 and 17-20), under the assumed diversion share.",
+  "demand_tiers": {
+    "high": {
+      "min_avg_bikes_diverted_per_hr": 1900,
+      "min_peak_bikes_diverted_per_hr": 3300
+    },
+    "medium": {
+      "min_avg_bikes_diverted_per_hr": 1500,
+      "min_peak_bikes_diverted_per_hr": 2700
+    }
+  },
+  "recommendations": {
+    "high|compatible_assumed": {
+      "level": "recommended",
+      "text": "Flyover recommended"
+    },
+    "medium|compatible_assumed": {
+      "level": "second",
+      "text": "Flyover recommended (second priority)"
+    },
+    "low|compatible_assumed": {
+      "level": "not_recommended",
+      "text": "Flyover not recommended: 2-wheeler demand is too low to justify it"
+    },
+    "any|unknown": {
+      "level": "withheld",
+      "text": "Verdict withheld: surrounding-environment data not available"
+    },
+    "high|unknown": {
+      "level": "provisional",
+      "text": "Provisional verdict: flyover looks justified on 2-wheeler demand"
+    },
+    "medium|unknown": {
+      "level": "provisional",
+      "text": "Provisional verdict: flyover may be justified on 2-wheeler demand (second priority)"
+    },
+    "low|unknown": {
+      "level": "provisional",
+      "text": "Provisional verdict: flyover not justified on 2-wheeler demand alone"
+    }
+  },
+  "site_labels": {
+    "compatible_assumed": "Environment considered feasible (straight road, metro in the median, 2 lanes each side, service road)",
+    "unknown": "Surrounding-environment data not available"
+  },
+  "environment_note": "The surrounding environment was considered feasible for this junction until site data is recorded. It cannot be guaranteed that it will remain the same once the site is surveyed.",
+  "data_notes": [
+    "Demand figures are model estimates, not field counts.",
+    "The 6 corridor junctions (Electronic City, Kudlu Gate, HSR Layout, Bommanahalli, Hosa Road, Bommasandra) are derived from Silk Board's profile scaled by video counts; the other roads are area-level synthetic data.",
+    "Motorcycle share is a fixed published-survey mix (about 53%) applied to every road, not measured per junction."
+  ],
+  "inconclusive_note": "This verdict is provisional. It cannot be concluded because surrounding-environment data is not available for this junction; it can be confirmed once the site data is recorded.",
+  "unknown_open_items": [
+    "Road type, median and number of lanes",
+    "Service road and right-of-way / road width",
+    "Space for ramps and merge/diverge geometry",
+    "Utilities, structural and geotechnical conditions",
+    "Road-safety audit and statutory approvals"
+  ]
+}

@@ -109,6 +109,55 @@ public class JunctionSpawner : MonoBehaviour
     /// <summary>Sent whenever the targets change (useful for the UI panel).</summary>
     public event Action CountsChanged;
 
+    // ---- Passed-vehicle counter ---------------------------------------------------------------
+    // Every vehicle that drives off the end of the road counts for (predicted / target) real
+    // vehicles, so once every on-screen vehicle of a type has left once, the counter has reached
+    // that type's hourly forecast exactly. It then holds at the forecast until the numbers change.
+    private readonly Dictionary<VehicleType, int> exits = new Dictionary<VehicleType, int>();
+    private int flyoverPassed;
+
+    /// <summary>Sent every time a vehicle is counted as having passed.</summary>
+    public event Action PassedChanged;
+
+    /// <summary>Vehicles of this type counted so far this hour (never above the forecast).</summary>
+    public int Passed(VehicleType type)
+    {
+        int forecast = Predicted(type);
+        int t = Target(type);
+        if (forecast <= 0 || t <= 0 || !exits.TryGetValue(type, out int n) || n <= 0)
+            return 0;
+        return n >= t ? forecast : Mathf.RoundToInt(n * (float)forecast / t);
+    }
+
+    /// <summary>Flyover motorcycles counted so far (one lap of the flyover = one bike counted).</summary>
+    public int PassedFlyoverBikes => flyoverPassed;
+
+    /// <summary>Ground + flyover motorcycles counted so far.</summary>
+    public int PassedAllBikes => Passed(VehicleType.Bike) + flyoverPassed;
+
+    /// <summary>The hourly forecast for ground + flyover motorcycles.</summary>
+    public int ForecastAllBikes => Predicted(VehicleType.Bike) + predictedFlyoverBikes;
+
+    public int PassedTotal => Types.Sum(Passed) + flyoverPassed;
+    public int ForecastTotal => Types.Sum(Predicted) + predictedFlyoverBikes;
+    public bool HourComplete => ForecastTotal > 0 && PassedTotal >= ForecastTotal;
+
+    /// <summary>Called by the flyover simulation each time a flyover bike finishes a lap.</summary>
+    public void RegisterFlyoverPass(int vehiclesRepresented)
+    {
+        flyoverPassed = Mathf.Min(predictedFlyoverBikes, flyoverPassed + Mathf.Max(1, vehiclesRepresented));
+        PassedChanged?.Invoke();
+    }
+
+    /// <summary>Start counting again from zero (also happens automatically when the forecast changes).</summary>
+    public void ResetPassed()
+    {
+        foreach (VehicleType type in Types)
+            exits[type] = 0;
+        flyoverPassed = 0;
+        PassedChanged?.Invoke();
+    }
+
     // ---- Numbers for the UI panel -------------------------------------------------------------
     public int Predicted(VehicleType type) => predicted.TryGetValue(type, out int n) ? n : 0;
     public int Target(VehicleType type) => target.TryGetValue(type, out int n) ? n : 0;
@@ -133,6 +182,7 @@ public class JunctionSpawner : MonoBehaviour
             active[type] = new List<LaneCarController>();
             predicted[type] = 0;
             target[type] = 0;
+            exits[type] = 0;
             templatesByType[type] = new List<VehicleInfo>();
         }
     }
@@ -371,6 +421,9 @@ public class JunctionSpawner : MonoBehaviour
 
     private void RecalculateTargets()
     {
+        var oldPredicted = Types.Select(t => Predicted(t)).ToArray();
+        int oldFlyover = predictedFlyoverBikes;
+
         if (source == CountSource.LivePrediction)
         {
             predicted[VehicleType.Car] = liveCars;
@@ -400,9 +453,14 @@ public class JunctionSpawner : MonoBehaviour
         Dictionary<VehicleType, int> next = ApplyCap(raw, Mathf.Max(0, maxVehiclesOnRoad));
 
         bool changed = Types.Any(type => next[type] != target[type]);
+        bool forecastChanged = predictedFlyoverBikes != oldFlyover ||
+                               Types.Select((type, i) => predicted[type] != oldPredicted[i]).Any(x => x);
         bool rose = Types.Any(type => next[type] > target[type]);
         foreach (VehicleType type in Types)
             target[type] = next[type];
+
+        if (changed || forecastChanged)
+            ResetPassed();   // new hour / new model / flyover toggled: start counting again
 
         if (!changed)
             return;
@@ -668,6 +726,12 @@ public class JunctionSpawner : MonoBehaviour
 
     private void OnVehicleReachedEnd(LaneCarController vehicle)
     {
+        if (vehicle.Info != null)
+        {
+            exits[vehicle.Info.type]++;
+            PassedChanged?.Invoke();
+        }
+
         Forget(vehicle);   // the next Reconcile places a replacement if this type is short
     }
 
@@ -730,17 +794,27 @@ public class JunctionSpawner : MonoBehaviour
             readoutStyle.normal.textColor = Color.white;
         }
 
-        GUILayout.BeginArea(new Rect(10f, 10f, 440f, Screen.height - 20f));
+        GUILayout.BeginArea(new Rect(10f, 10f, 530f, Screen.height - 20f));
         GUILayout.BeginVertical(GUI.skin.box);
         GUILayout.Label("<b>Junction spawner</b>   " + sourceLabel +
                         $"\n1 vehicle on screen = {vehiclesPerHourPerSpawned:0} per hour", readoutStyle);
 
-        Row("<b>Type</b>", "<b>Predicted</b>", "<b>Target</b>", "<b>On road</b>", "<b>Waiting*</b>", "<b>Leaving</b>");
+        Row("<b>Type</b>", "<b>Predicted</b>", "<b>Target</b>", "<b>On road</b>", "<b>Waiting*</b>", "<b>Leaving</b>", "<b>Passed</b>");
         foreach (VehicleType type in Types)
             Row(type == VehicleType.Bike ? "Bikes*" : GroupName(type), Predicted(type).ToString(), Target(type).ToString(),
-                OnRoad(type).ToString(), Waiting(type).ToString(), Leaving(type).ToString());
+                OnRoad(type).ToString(), Waiting(type).ToString(), Leaving(type).ToString(), Passed(type).ToString());
         Row("<b>Total</b>", Types.Sum(Predicted).ToString(), Types.Sum(Target).ToString(), Types.Sum(OnRoad).ToString(),
-            Types.Sum(Waiting).ToString(), Types.Sum(Leaving).ToString());
+            Types.Sum(Waiting).ToString(), Types.Sum(Leaving).ToString(), Types.Sum(Passed).ToString());
+
+        // Passed = vehicles that have driven off the end of the road this hour, scaled up so it
+        // reaches the dashboard's hourly forecast once every on-screen vehicle has left once.
+        GUILayout.Space(4f);
+        if (predictedFlyoverBikes > 0)
+            GUILayout.Label($"Flyover bikes passed: <b>{PassedFlyoverBikes} / {predictedFlyoverBikes}</b>", readoutStyle);
+        GUILayout.Label($"<b>Total passed this hour: {PassedTotal} / {ForecastTotal}</b>" +
+                        (HourComplete ? "   (forecast reached)" : ""), readoutStyle);
+        GUILayout.HorizontalSlider(PassedTotal, 0f, Mathf.Max(1, ForecastTotal));
+        GUILayout.Space(4f);
 
         GUILayout.Label(ReadoutFooter(), readoutStyle);
         GUILayout.EndVertical();
@@ -752,7 +826,7 @@ public class JunctionSpawner : MonoBehaviour
         GUILayout.BeginHorizontal();
         GUILayout.Label(cells[0], readoutStyle, GUILayout.Width(70f));
         for (int i = 1; i < cells.Length; i++)
-            GUILayout.Label(cells[i], readoutStyle, GUILayout.Width(i == 1 ? 80f : 62f));
+            GUILayout.Label(cells[i], readoutStyle, GUILayout.Width(i == 1 ? 80f : i == 6 ? 70f : 62f));
         GUILayout.EndHorizontal();
     }
 

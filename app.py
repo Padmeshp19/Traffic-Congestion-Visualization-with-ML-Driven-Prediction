@@ -131,5 +131,114 @@ def get_flyover_impact():
 def get_model_metrics():
     return jsonify(model_metrics)
 
+# ---- Flyover recommendation: demand (from the models) + site readiness (from a config file) ----
+# Additive only: /predict, /predict-grid, /flyover-impact and /model-metrics are untouched, and the
+# Unity integration (which uses /predict) is not affected. If the two JSON files are missing the
+# defaults below are used, so the server still starts.
+JUNCTION_PROFILES = load_json('data/junction_profiles.json').get('roads', {})
+RECO_CONFIG = load_json('data/recommendation_config.json')
+
+_TIERS = RECO_CONFIG.get('demand_tiers', {})
+HIGH_TIER   = {'avg': float(_TIERS.get('high', {}).get('min_avg_bikes_diverted_per_hr', 1900)),
+               'peak': float(_TIERS.get('high', {}).get('min_peak_bikes_diverted_per_hr', 3300))}
+MEDIUM_TIER = {'avg': float(_TIERS.get('medium', {}).get('min_avg_bikes_diverted_per_hr', 1500)),
+               'peak': float(_TIERS.get('medium', {}).get('min_peak_bikes_diverted_per_hr', 2700))}
+SITE_LABELS = RECO_CONFIG.get('site_labels', {
+    'compatible_assumed': 'Environment considered feasible (straight road, metro in the median, 2 lanes each side, service road)',
+    'unknown': 'Surrounding-environment data not available'})
+RECO_RULES = RECO_CONFIG.get('recommendations', {
+    'high|compatible_assumed':   {'level': 'recommended',     'text': 'Flyover recommended'},
+    'medium|compatible_assumed': {'level': 'second',          'text': 'Flyover recommended (second priority)'},
+    'low|compatible_assumed':    {'level': 'not_recommended', 'text': 'Flyover not recommended: 2-wheeler demand is too low to justify it'},
+    'high|unknown':              {'level': 'provisional',     'text': 'Provisional verdict: flyover looks justified on 2-wheeler demand'},
+    'medium|unknown':            {'level': 'provisional',     'text': 'Provisional verdict: flyover may be justified on 2-wheeler demand (second priority)'},
+    'low|unknown':               {'level': 'provisional',     'text': 'Provisional verdict: flyover not justified on 2-wheeler demand alone'},
+    'any|unknown':               {'level': 'withheld',        'text': 'Verdict withheld: surrounding-environment data not available'}})
+INCONCLUSIVE_NOTE = RECO_CONFIG.get('inconclusive_note',
+    'This verdict is provisional. It cannot be concluded because surrounding-environment data is not available '
+    'for this junction; it can be confirmed once the site data is recorded.')
+UNKNOWN_OPEN_ITEMS = RECO_CONFIG.get('unknown_open_items', [])
+ENVIRONMENT_NOTE = RECO_CONFIG.get('environment_note',
+    'The surrounding environment was considered feasible for this junction until site data is recorded. '
+    'It cannot be guaranteed that it will remain the same once the site is surveyed.')
+RECO_NOTES = RECO_CONFIG.get('data_notes', [])
+_RECO_CACHE = {}
+
+def _demand_tier(avg_diverted, peak_diverted):
+    # Both the average and the peak-hour demand must reach the tier's minimum.
+    if avg_diverted >= HIGH_TIER['avg'] and peak_diverted >= HIGH_TIER['peak']:
+        return 'high'
+    if avg_diverted >= MEDIUM_TIER['avg'] and peak_diverted >= MEDIUM_TIER['peak']:
+        return 'medium'
+    return 'low'
+
+def _recommendation_for(tier, site_status):
+    # A road without site data never gets a "candidate" verdict.
+    # Roads without environment data get a PROVISIONAL verdict (demand only), flagged as not conclusive.
+    withheld = RECO_RULES.get('any|unknown', {'level': 'withheld', 'text': 'Verdict withheld: surrounding-environment data not available'})
+    if site_status == 'compatible_assumed':
+        return RECO_RULES.get(f'{tier}|{site_status}', withheld)
+    return RECO_RULES.get(f'{tier}|unknown', withheld)
+
+def _road_demand(model_name, road):
+    """Demand metrics for one road over all 168 day/hour slots (same prediction rule as /predict-grid)."""
+    rows = [[d, h, 1 if d >= 5 else 0,
+             1 if (7 <= h <= 10 or 17 <= h <= 20) else 0,
+             road_mapping[road]] for d in range(7) for h in range(24)]
+    X = pd.DataFrame(rows, columns=['Day_Num', 'Hour', 'Is_Weekend', 'Peak_Flag', 'Road_Encoded'])
+    pred = np.maximum(0, np.round(MODELS[model_name].predict(X))).astype(int)[:, :4]
+    diverted = (pred[:, 1] * FLYOVER_DIVERSION).astype(int)          # same rule as /predict
+    totals = pred.sum(axis=1)
+    peak = X['Peak_Flag'].to_numpy() == 1
+    return {
+        'avg_total_per_hr': int(round(totals.mean())),
+        'avg_bikes_diverted_per_hr': int(round(diverted.mean())),
+        'peak_bikes_diverted_per_hr': int(round(diverted[peak].mean())),
+        'bike_share_pct': round(100 * pred[:, 1].sum() / max(1, totals.sum()), 1),
+        'reduction_pct': round(100 * diverted.sum() / max(1, totals.sum()), 1),
+    }
+
+def _build_recommendations(model_name):
+    roads = []
+    for road in road_mapping:
+        row = {'road': road}
+        row.update(_road_demand(model_name, road))
+        profile = JUNCTION_PROFILES.get(road, {})
+        site_status = profile.get('site_status', 'unknown')
+        row['demand_tier'] = _demand_tier(row['avg_bikes_diverted_per_hr'], row['peak_bikes_diverted_per_hr'])
+        row['site_status'] = site_status
+        row['site_label'] = SITE_LABELS.get(site_status, SITE_LABELS.get('unknown', 'Site data not available'))
+        row['site_notes'] = profile.get('notes', '')
+        row['open_items'] = profile.get('open_items', [])
+        reco = _recommendation_for(row['demand_tier'], site_status)
+        row['recommendation'] = reco['text']
+        row['recommendation_level'] = reco['level']
+        row['conclusive'] = site_status == 'compatible_assumed'
+        if not row['open_items'] and not row['conclusive']:
+            row['open_items'] = UNKNOWN_OPEN_ITEMS
+        roads.append(row)
+    roads.sort(key=lambda r: r['avg_bikes_diverted_per_hr'], reverse=True)
+    for i, r in enumerate(roads, start=1):
+        r['demand_rank'] = i
+        r['roads_ranked'] = len(roads)
+    return roads
+
+@app.route('/flyover-recommendation', methods=['GET'])
+def flyover_recommendation():
+    model_name = request.args.get('model', DEFAULT_MODEL).lower()
+    if model_name not in MODELS:
+        return jsonify({'error': f'Model "{model_name}" not found. Available: {sorted(MODELS)}'}), 400
+    if model_name not in _RECO_CACHE:
+        _RECO_CACHE[model_name] = _build_recommendations(model_name)
+    return jsonify({
+        'model': model_name,
+        'diversion': FLYOVER_DIVERSION,
+        'thresholds': {'high': HIGH_TIER, 'medium': MEDIUM_TIER},
+        'environment_note': ENVIRONMENT_NOTE,
+        'inconclusive_note': INCONCLUSIVE_NOTE,
+        'data_notes': RECO_NOTES,
+        'roads': _RECO_CACHE[model_name]
+    })
+
 if __name__ == '__main__':
     app.run(debug=True)
