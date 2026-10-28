@@ -866,9 +866,18 @@ function updateMetricsUI() {
   $('cmpNote').textContent = `Gradient Boosting has the higher R² on ${wins} of ${TARGETS.length} targets (average gain ${(gainSum / TARGETS.length).toFixed(3)}). Both models use the same 5 inputs (road, day, hour, weekend, peak), so the gap is small. The selected model's columns are highlighted.`;
 }
 
+// Tell Flask which selection the dashboard is showing, so Unity can follow it. Fire-and-forget.
+function pushSelectionToUnity(road, dayNum, hour) {
+  fetch('/dashboard-selection', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({road, day_num: dayNum, hour, model, flyover: flyoverOn})
+  }).catch(() => {});
+}
+
 async function predict() {
   const tk = ++reqId; $('statsGrid').style.opacity = .55;
   const road = $('selRoad').value, dayNum = +$('selDay').value, hour = +$('selHour').value;
+  pushSelectionToUnity(road, dayNum, hour);
   const isPeak = (hour >= 7 && hour <= 10) || (hour >= 17 && hour <= 20);
   $('err').style.display = 'none';
 

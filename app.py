@@ -240,5 +240,28 @@ def flyover_recommendation():
         'roads': _RECO_CACHE[model_name]
     })
 
+
+# ---- Dashboard -> Unity selection sync (new, additive) ----
+# The dashboard POSTs its current selection here; Unity polls it with GET.
+_DASH_SELECTION = {'road': None, 'day_num': None, 'hour': None,
+                   'model': DEFAULT_MODEL, 'flyover': False, 'seq': 0}
+
+@app.route('/dashboard-selection', methods=['GET', 'POST'])
+def dashboard_selection():
+    if request.method == 'POST':
+        d = request.get_json(silent=True) or {}
+        road = d.get('road')
+        model_name = str(d.get('model', DEFAULT_MODEL)).lower()
+        if road not in road_mapping or model_name not in MODELS:
+            return jsonify({'error': 'unknown road or model'}), 400
+        _DASH_SELECTION.update(
+            road=road,
+            day_num=max(0, min(6, int(d.get('day_num', 0)))),
+            hour=max(0, min(23, int(d.get('hour', 0)))),
+            model=model_name,
+            flyover=bool(d.get('flyover', False)),
+            seq=_DASH_SELECTION['seq'] + 1)
+    return jsonify(_DASH_SELECTION)
+
 if __name__ == '__main__':
     app.run(debug=True)
