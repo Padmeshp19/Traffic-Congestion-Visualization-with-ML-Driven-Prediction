@@ -1003,6 +1003,18 @@ function renderDonutChart(pred) {
 }
 
 
+// Weekly (168-slot) flyover summary from the base grid and the flyover grid of the same road + model.
+// "Diverted" is measured from the grids themselves (base bikes minus flyover bikes), the same way renderFeasibility() does it.
+function weeklyFlyoverSummary(base, fly) {
+  const b = base.flat(), f = fly.flat(), n = b.length;
+  let bikes = 0, total = 0, diverted = 0;
+  for (let i = 0; i < n; i++) { bikes += b[i][1]; total += b[i][4]; diverted += Math.max(0, b[i][1] - f[i][1]); }
+  return {
+    avgBikes: Math.round(bikes / n), avgTotal: Math.round(total / n), avgDiverted: Math.round(diverted / n),
+    reductionPct: total ? ((total - f.reduce((a, x) => a + x[4], 0)) / total * 100).toFixed(1) : '0.0'
+  };
+}
+
 function renderFlyoverPanel(road, basePred, pred) {
   const panel = document.getElementById('flyoverPanel');
   const content = document.getElementById('flyoverContent');
@@ -1010,21 +1022,38 @@ function renderFlyoverPanel(road, basePred, pred) {
 
   if (!flyoverOn) {
     panel.classList.remove('active-flyover');
-    if (impact) {
+    // Flyover OFF: the impact card is built from the SAME week grids (7 x 24 = 168 slots) and the SAME selected model
+    // as the Flyover Feasibility panel, so both always agree and both follow the Random Forest / Gradient Boosting toggle.
+    // The grids come from getGrid(), so they are cached and add no extra requests once a road/model has been loaded.
+    const tk = reqId, m = model;
+    content.innerHTML = `<div style="color:var(--muted);font-size:13px;">Calculating flyover impact for <strong style="color:var(--text)">${road}</strong>…</div>`;
+    Promise.all([getGrid(m, road, false), getGrid(m, road, true)]).then(([b, f]) => {
+      if (tk !== reqId || flyoverOn) return;            // a newer selection replaced this one
+      const s = weeklyFlyoverSummary(b, f);
       content.innerHTML = `
         <div style="color:var(--muted);font-size:13px;margin-bottom:12px;">Estimated flyover impact for <strong style="color:var(--text)">${road}</strong></div>
         <div class="impact-grid">
-          <div class="impact-item"><div class="val" style="color:var(--accent2)">${impact.avg_motorcycles.toLocaleString()}</div><div class="lbl">Avg Daily Bikes</div></div>
-          <div class="impact-item"><div class="val">${impact.congestion_reduction_pct}%</div><div class="lbl">Modelled Volume Reduction</div></div>
-          <div class="impact-item"><div class="val" style="color:var(--yellow)">${impact.bikes_diverted.toLocaleString()}</div><div class="lbl">Bikes Diverted/hr</div></div>
-          <div class="impact-item"><div class="val" style="color:var(--green)">${impact.avg_total.toLocaleString()}</div><div class="lbl">Avg Total Vehicles</div></div>
+          <div class="impact-item"><div class="val" style="color:var(--accent2)">${s.avgBikes.toLocaleString()}</div><div class="lbl">Avg Bikes/hr</div></div>
+          <div class="impact-item"><div class="val">${s.reductionPct}%</div><div class="lbl">Modelled Volume Reduction</div></div>
+          <div class="impact-item"><div class="val" style="color:var(--yellow)">${s.avgDiverted.toLocaleString()}</div><div class="lbl">Bikes Diverted/hr</div></div>
+          <div class="impact-item"><div class="val" style="color:var(--green)">${s.avgTotal.toLocaleString()}</div><div class="lbl">Avg Total Vehicles/hr</div></div>
         </div>
         <div style="margin-top:12px;padding:10px;background:rgba(0,212,255,0.06);border-radius:8px;font-size:12px;color:var(--muted);">
-          💡 Toggle Flyover ON to see the predicted reduction in real time
+          💡 Toggle Flyover ON to see the predicted reduction in real time<br>
+          <span style="opacity:.8">${NAMES[m]} model · average of all 168 day-hour slots (7 days × 24 hours)</span>
         </div>`;
-    } else {
-      content.innerHTML = `<div style="padding:12px;background:rgba(0,212,255,0.06);border-radius:8px;font-size:12px;color:var(--muted);">Toggle Flyover ON to simulate the 2-wheeler diversion for this road.</div>`;
-    }
+    }).catch(() => {
+      if (tk !== reqId || flyoverOn) return;
+      const impact = FLYOVER_IMPACT[road];              // fallback only if the grids cannot be loaded: training-data averages
+      content.innerHTML = impact ? `
+        <div style="color:var(--muted);font-size:13px;margin-bottom:12px;">Estimated flyover impact for <strong style="color:var(--text)">${road}</strong> (training-data average)</div>
+        <div class="impact-grid">
+          <div class="impact-item"><div class="val" style="color:var(--accent2)">${impact.avg_motorcycles.toLocaleString()}</div><div class="lbl">Avg Bikes/hr</div></div>
+          <div class="impact-item"><div class="val">${impact.congestion_reduction_pct}%</div><div class="lbl">Modelled Volume Reduction</div></div>
+          <div class="impact-item"><div class="val" style="color:var(--yellow)">${impact.bikes_diverted.toLocaleString()}</div><div class="lbl">Bikes Diverted/hr</div></div>
+          <div class="impact-item"><div class="val" style="color:var(--green)">${impact.avg_total.toLocaleString()}</div><div class="lbl">Avg Total Vehicles/hr</div></div>
+        </div>` : `<div style="padding:12px;background:rgba(0,212,255,0.06);border-radius:8px;font-size:12px;color:var(--muted);">Toggle Flyover ON to simulate the 2-wheeler diversion for this road.</div>`;
+    });
     return;
   }
 
