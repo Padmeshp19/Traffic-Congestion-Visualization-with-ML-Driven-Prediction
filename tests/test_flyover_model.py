@@ -46,3 +46,12 @@ def test_flyover_capacity_cap_binds():
     h = fm.compute_day("Hosa Road", day(), {"flyover_capacity_ratio": 0.01})["hours"]
     base = fm.compute_day("Hosa Road", day())["hours"]
     assert max(x["diversion_rate"] for x in h) < 0.5 * max(x["diversion_rate"] for x in base)
+
+def test_summary_exposes_benefit_metrics_and_overrides():
+    base = fm.compute_day("Hosa Road", day())
+    constrained = fm.compute_day("Hosa Road", day(), {
+        "eligible_share": 0.2, "flyover_capacity_ratio": 0.1, "pcu_bikes": 0.6
+    })
+    for key in ["peak_vc", "vehicle_hours_saved_day", "hours_useful", "peak_diversion"]:
+        assert key in base["summary"]
+    assert constrained["summary"]["vehicle_hours_saved_day"] < base["summary"]["vehicle_hours_saved_day"]

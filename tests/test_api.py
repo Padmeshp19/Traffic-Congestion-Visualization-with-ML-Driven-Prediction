@@ -31,3 +31,24 @@ def test_grid_matches_predict(c):
     g = c.get('/predict-grid?road=Hosa%20Road&flyover=1').get_json()['grid']
     p = post(c, 'Hosa Road', 8, True, day=2).get_json()
     assert abs(g[2][8][1] - p['motorcycles']) <= 1
+
+def test_recommendation_includes_dynamic_benefit_metrics(c):
+    r = c.get('/flyover-recommendation?model=gbm&day_num=4')
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j['day_num'] == 4
+    assert j['benefit_thresholds']['near_gridlock_vc'] == 0.85
+    row = next(x for x in j['roads'] if x['road'] == 'Hosa Road')
+    for key in ['peak_vc', 'vehicle_hours_saved', 'useful_hours',
+                'peak_diversion_rate', 'verdict', 'site_readiness']:
+        assert key in row
+    assert row['verdict'] in {'Prioritize', 'Consider', 'Monitor'}
+
+def test_sensitivity_returns_ranges_and_verdict_stability(c):
+    r = c.get('/flyover-sensitivity?model=gbm&road=Hosa%20Road&day_num=4&runs=50')
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j['runs'] == 50
+    assert len(j['p10_p90']['vehicle_hours_saved']) == 2
+    assert 0 <= j['verdict_holds_pct'] <= 100
+    assert len(j['tornado']) >= 4

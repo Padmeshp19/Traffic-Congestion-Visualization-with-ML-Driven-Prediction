@@ -797,6 +797,11 @@
       Loading the selected road's scenario comparison…
     </div>
     <div id="recoPanel"></div>
+    <div id="sensitivityPanel" class="reco-card" style="margin-top:12px">
+      <div class="reco-head">Sensitivity analysis</div>
+      <div class="reco-small" id="sensitivitySummary">Loading parameter uncertainty…</div>
+      <div id="sensitivityTornado"></div>
+    </div>
     <p class="feasibility-note" id="feasibilityEvidence">
       The construction decision requires site-specific road width/right-of-way, ramp and junction geometry, structural and geotechnical review, safety/accessibility checks, utilities, environmental impact, construction and maintenance costs, and approval from the relevant authorities. These inputs are not available in the current traffic-prediction dataset.
     </p>
@@ -929,7 +934,7 @@ async function predict() {
   renderFlyoverPanel(road, basePred, pred);
   renderHeat(grid, dayNum, hour, Math.max(...ref) * 1.1);
   renderBest(grid[dayNum], dayNum);
-  renderFeasibility(road, model);
+  renderFeasibility(road, model, dayNum);
 }
 
 function renderHourlyChart(G, dayNum, hour) {
@@ -1143,14 +1148,15 @@ const RECO_COLORS = {recommended:'var(--green)', second:'var(--yellow)', not_rec
 const TIER_TEXT = {high:'High bike demand', medium:'Medium bike demand', low:'Low bike demand'};
 
 // Returns {row, data} for the selected road, or null (the old logic is then used as a fallback).
-async function getRecommendation(selectedModel, road) {
+async function getRecommendation(selectedModel, road, dayNum) {
   try {
-    if (!recoCache[selectedModel]) {
-      const r = await fetch('/flyover-recommendation?model=' + encodeURIComponent(selectedModel));
+    const key = selectedModel + ':' + dayNum;
+    if (!recoCache[key]) {
+      const r = await fetch('/flyover-recommendation?model=' + encodeURIComponent(selectedModel) + '&day_num=' + dayNum);
       if (!r.ok) return null;
-      recoCache[selectedModel] = await r.json();
+      recoCache[key] = await r.json();
     }
-    const data = recoCache[selectedModel];
+    const data = recoCache[key];
     const row = (data.roads || []).find(x => x.road === road);
     return row ? {row, data} : null;
   } catch (e) { return null; }
@@ -1166,6 +1172,7 @@ function renderRecoPanel(reco, road) {
         <td>${x.demand_rank}</td><td>${escHtml(x.road)}</td>
         <td>${x.avg_bikes_diverted_per_hr.toLocaleString()}</td>
         <td>${escHtml(TIER_TEXT[x.demand_tier] || x.demand_tier)}</td>
+        <td>${x.peak_vc.toFixed(2)}×</td><td>${x.vehicle_hours_saved.toLocaleString()} h</td>
         <td>${escHtml(x.site_label)}</td>
         <td style="color:${RECO_COLORS[x.recommendation_level] || 'var(--text)'}">${escHtml(x.recommendation)}</td>
       </tr>`).join('');
@@ -1176,6 +1183,9 @@ function renderRecoPanel(reco, road) {
       <div class="reco-row"><b>Demand:</b> ${escHtml(TIER_TEXT[row.demand_tier] || row.demand_tier)} &mdash;
         ${row.avg_bikes_diverted_per_hr.toLocaleString()} motorcycles diverted per hour on average
         (${row.peak_bikes_diverted_per_hr.toLocaleString()} in peak hours); rank ${row.demand_rank} of ${row.roads_ranked} roads.</div>
+      <div class="reco-row"><b>Benefit:</b> ${escHtml(row.verdict)} &mdash;
+        peak v/c ${row.peak_vc.toFixed(2)}×, ${row.vehicle_hours_saved.toLocaleString()} vehicle-hours saved,
+        useful in ${row.useful_hours} hours; peak diversion ${(row.peak_diversion_rate * 100).toFixed(1)}%.</div>
       <div class="reco-row"><b>Site:</b> ${escHtml(row.site_label)}${row.site_notes ? ' &mdash; ' + escHtml(row.site_notes) : ''}</div>
       ${items ? `<div class="reco-row" style="margin-top:6px"><b>${compatible ? 'Still to confirm on site:' : 'Needed to conclude:'}</b></div><ul>${items}</ul>` : ''}
       <div class="reco-small">Note: ${escHtml(compatible ? (data.environment_note || '') : (data.inconclusive_note || ''))}</div>
@@ -1183,7 +1193,7 @@ function renderRecoPanel(reco, road) {
     <details class="reco-table-wrap">
       <summary style="cursor:pointer;color:var(--muted);font-size:12px">Show ranking of all ${data.roads.length} roads</summary>
       <table class="reco-table">
-        <thead><tr><th>#</th><th>Road</th><th>Bikes diverted / hr</th><th>Demand</th><th>Site</th><th>Recommendation</th></tr></thead>
+        <thead><tr><th>#</th><th>Road</th><th>Bikes diverted / hr</th><th>Demand</th><th>Peak v/c</th><th>Saved h</th><th>Site</th><th>Recommendation</th></tr></thead>
         <tbody>${tr}</tbody>
       </table>
       ${notes ? `<ul style="margin-top:8px">${notes}</ul>` : ''}
@@ -1192,7 +1202,7 @@ function renderRecoPanel(reco, road) {
 
 // Estimate traffic-volume benefit across all 168 day/hour slots for the selected road.
 // This is a traffic proxy, not a full transport, engineering, or financial feasibility study.
-async function renderFeasibility(road, selectedModel) {
+async function renderFeasibility(road, selectedModel, dayNum) {
   const currentRequest = ++feasibilityReqId;
   const reductionEl = $('feasibilityReduction');
   const bikesEl = $('feasibilityBikes');
@@ -1243,13 +1253,13 @@ async function renderFeasibility(road, selectedModel) {
 
     reductionEl.textContent = `${reductionPct.toFixed(1)}%`;
     bikesEl.textContent = Math.round(avgBikesDiverted).toLocaleString();
-    const reco = await getRecommendation(selectedModel, road);
+    const reco = await getRecommendation(selectedModel, road, dayNum);
     if (currentRequest !== feasibilityReqId) return;
     $('recoPanel').innerHTML = '';
     if (reco) {
-      trafficVerdictEl.textContent = TIER_TEXT[reco.row.demand_tier] || reco.row.demand_tier;
-      trafficVerdictEl.style.color = reco.row.demand_tier === 'high' ? 'var(--green)'
-        : reco.row.demand_tier === 'medium' ? 'var(--yellow)' : 'var(--red)';
+      trafficVerdictEl.textContent = reco.row.verdict;
+      trafficVerdictEl.style.color = reco.row.verdict === 'Prioritize' ? 'var(--green)'
+        : reco.row.verdict === 'Consider' ? 'var(--yellow)' : 'var(--red)';
     } else if (reductionPct >= 8) {
       trafficVerdictEl.textContent = 'Meaningful modelled benefit';
       trafficVerdictEl.style.color = 'var(--green)';
@@ -1274,7 +1284,8 @@ async function renderFeasibility(road, selectedModel) {
         `<strong>${(rr.recommendation_level === 'withheld' || rr.recommendation_level === 'provisional') ? '' : 'Verdict: '}${escHtml(rr.recommendation)}.</strong> ` +
         `For <strong>${escHtml(road)}</strong>, the selected ${NAMES[selectedModel]} model estimates about ` +
         `${rr.avg_bikes_diverted_per_hr.toLocaleString()} motorcycles diverted per hour on average ` +
-        `(${rr.peak_bikes_diverted_per_hr.toLocaleString()} in peak hours) under the assumed 30% diversion, ` +
+        `(${rr.peak_bikes_diverted_per_hr.toLocaleString()} in peak hours), with peak v/c ${rr.peak_vc.toFixed(2)}× ` +
+        `and ${rr.vehicle_hours_saved.toLocaleString()} vehicle-hours saved on the selected day, ` +
         `ranking ${rr.demand_rank} of ${rr.roads_ranked} roads by 2-wheeler demand. ` +
         (reasons[rr.recommendation_level] || '');
       renderRecoPanel(reco, road);
@@ -1293,11 +1304,22 @@ async function renderFeasibility(road, selectedModel) {
 
     $('feasibilityEvidence').textContent =
       (reco
-        ? `Decision logic: a junction is rated high demand if it reaches both ${reco.data.thresholds.high.avg.toLocaleString()} motorcycles diverted per hour on average and ${reco.data.thresholds.high.peak.toLocaleString()} in peak hours, medium demand at ${reco.data.thresholds.medium.avg.toLocaleString()} and ${reco.data.thresholds.medium.peak.toLocaleString()}, otherwise low. High demand = flyover recommended, medium = recommended as second priority, low = not recommended. Junctions without surrounding-environment data get a provisional verdict from demand alone, which cannot be concluded until their environment data is recorded. `
+        ? `Decision logic: benefit is Prioritize at peak v/c ≥ ${reco.data.benefit_thresholds.near_gridlock_vc.toFixed(2)} with at least ${reco.data.benefit_thresholds.min_saved_vehicle_hours} saved vehicle-hours and ${reco.data.benefit_thresholds.min_useful_hours} useful hours; Consider at peak v/c ≥ ${reco.data.benefit_thresholds.heavy_vc.toFixed(2)} with a positive saving; otherwise Monitor. Site-readiness data is shown separately, and missing site data keeps the recommendation provisional. `
         : 'Decision logic: ≥8% modelled volume reduction = meaningful traffic-impact signal; 3–<8% = modest; <3% = limited. ') +
       'These are project screening thresholds, not official engineering standards. ' +
       'Construction feasibility remains unconfirmed until site-specific right-of-way and road width, ramp geometry, structural/geotechnical conditions, road safety, utilities, environmental effects, capital and maintenance costs, and approvals are assessed. ' +
       'The dataset includes generated/derived road profiles. The validation report records video observations for only 4 hours per day across 7 days (28 of 168 day/hour cells), and the generated profiles are not independent site measurements. Validate the estimates with representative field counts before making a planning decision.';
+    const sensitivity = await fetch('/flyover-sensitivity?model=' + encodeURIComponent(selectedModel) +
+      '&road=' + encodeURIComponent(road) + '&day_num=' + dayNum).then(r => r.ok ? r.json() : null);
+    if (sensitivity && currentRequest === feasibilityReqId) {
+      const range = sensitivity.p10_p90.vehicle_hours_saved;
+      $('sensitivitySummary').textContent =
+        `Across ${sensitivity.runs} sampled parameter combinations, saved vehicle-hours range from ` +
+        `${range[0].toLocaleString()} (P10) to ${range[1].toLocaleString()} (P90). ` +
+        `The baseline verdict held in ${sensitivity.verdict_holds_pct}% of runs.`;
+      $('sensitivityTornado').innerHTML = (sensitivity.tornado || []).slice(0, 4).map(x =>
+        `<div class="reco-row"><b>${escHtml(x.label)}:</b> ±${x.impact_hours.toLocaleString()} saved hours</div>`).join('');
+    }
   } catch (e) {
     if (currentRequest !== feasibilityReqId) return;
     reductionEl.textContent = 'Unavailable';

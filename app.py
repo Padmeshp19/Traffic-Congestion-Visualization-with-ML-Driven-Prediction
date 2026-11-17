@@ -31,26 +31,36 @@ def load_json(path):
             return json.load(f)
     return {}
 
-FLYOVER_DIVERSION = 0.30          # share of 2-wheelers diverted onto the flyover (applies to EVERY road)
-
-# Dynamic diversion drives /predict and /predict-grid (the impact card + Unity).
-# The recommendation/verdict layer keeps the fixed-30% scenario for now, because its tier thresholds
-# (1900 / 3300 bikes per hour) were hand-set for 30%. Flip to True only after the thresholds are redone
-# (planned: benefit-based verdict).
-RECO_USE_DYNAMIC = False
+FLYOVER_DIVERSION = 0.30          # fallback for roads without calibrated parameters
 
 _DIV_CACHE = {}
+
+
+def _prediction_rows(model_name, road, day_num):
+    rows = [[day_num, hour, 1 if day_num >= 5 else 0,
+             1 if (7 <= hour <= 10 or 17 <= hour <= 20) else 0,
+             road_mapping[road]] for hour in range(24)]
+    features = pd.DataFrame(rows, columns=['Day_Num', 'Hour', 'Is_Weekend',
+                                            'Peak_Flag', 'Road_Encoded'])
+    predictions = np.maximum(0, np.round(MODELS[model_name].predict(features))).astype(int)
+    return [
+        {'bikes': int(row[1]), 'cars': int(row[0]),
+         'buses': int(row[2]), 'trucks': int(row[3])}
+        for row in predictions[:, :4]
+    ]
+
+
+def _day_result(model_name, road, day_num, overrides=None):
+    return fm.compute_day(road, _prediction_rows(model_name, road, day_num), overrides)
+
+
 def day_diversion(model_name, road, day_num):
     """24 hourly diversion rates (share of bikes) for one road and day, from the delay model.
     Falls back to FLYOVER_DIVERSION if the road has no entry in data/flyover_params.json."""
     key = (model_name, road, day_num)
     if key not in _DIV_CACHE:
-        rows = [[day_num, h, 1 if day_num >= 5 else 0,
-                 1 if (7 <= h <= 10 or 17 <= h <= 20) else 0, road_mapping[road]] for h in range(24)]
-        X = pd.DataFrame(rows, columns=['Day_Num','Hour','Is_Weekend','Peak_Flag','Road_Encoded'])
-        p = np.maximum(0, np.round(MODELS[model_name].predict(X))).astype(int)
-        hourly = [{'cars': int(r[0]), 'bikes': int(r[1]), 'buses': int(r[2]), 'trucks': int(r[3])} for r in p]
-        _DIV_CACHE[key] = [h['diversion_rate'] for h in fm.compute_day(road, hourly)['hours']]
+        _DIV_CACHE[key] = [h['diversion_rate']
+                           for h in _day_result(model_name, road, day_num)['hours']]
     return _DIV_CACHE[key]
 
 flyover_impact = load_json('models/flyover_impact.json')
@@ -207,27 +217,65 @@ def _recommendation_for(tier, site_status):
 
 def _road_demand(model_name, road):
     """Demand metrics for one road over all 168 day/hour slots (same prediction rule as /predict-grid)."""
-    rows = [[d, h, 1 if d >= 5 else 0,
-             1 if (7 <= h <= 10 or 17 <= h <= 20) else 0,
-             road_mapping[road]] for d in range(7) for h in range(24)]
-    X = pd.DataFrame(rows, columns=['Day_Num', 'Hour', 'Is_Weekend', 'Peak_Flag', 'Road_Encoded'])
-    pred = np.maximum(0, np.round(MODELS[model_name].predict(X))).astype(int)[:, :4]
-    if RECO_USE_DYNAMIC:
-        rates = np.array([r for d in range(7) for r in day_diversion(model_name, road, d)])
-    else:
-        rates = FLYOVER_DIVERSION
-    diverted = (pred[:, 1] * rates).astype(int)
-    totals = pred.sum(axis=1)
-    peak = X['Peak_Flag'].to_numpy() == 1
+    rows = [_prediction_rows(model_name, road, d) for d in range(7)]
+    diverted = np.array([
+        row['bikes'] * hour['diversion_rate']
+        for day_num, day in enumerate(rows)
+        for row, hour in zip(day, _day_result(model_name, road, day_num)['hours'])
+    ])
+    totals = np.array([
+        row['bikes'] + row['cars'] + row['buses'] + row['trucks']
+        for day in rows for row in day
+    ])
+    peak = np.array([
+        h in (7, 8, 9, 10, 17, 18, 19, 20)
+        for d in range(7) for h in range(24)
+    ])
     return {
         'avg_total_per_hr': int(round(totals.mean())),
         'avg_bikes_diverted_per_hr': int(round(diverted.mean())),
         'peak_bikes_diverted_per_hr': int(round(diverted[peak].mean())),
-        'bike_share_pct': round(100 * pred[:, 1].sum() / max(1, totals.sum()), 1),
+        'bike_share_pct': round(100 * sum(row['bikes'] for day in rows for row in day) / max(1, totals.sum()), 1),
         'reduction_pct': round(100 * diverted.sum() / max(1, totals.sum()), 1),
     }
 
-def _build_recommendations(model_name):
+
+def _benefit_metrics(model_name, road, day_num):
+    return _benefit_metrics_with_overrides(model_name, road, day_num)
+
+
+def _benefit_metrics_with_overrides(model_name, road, day_num, overrides=None):
+    result = _day_result(model_name, road, day_num, overrides)
+    summary = result.get('summary', {})
+    return {
+        'peak_vc': round(float(summary.get('peak_vc', 0.0)), 3),
+        'vehicle_hours_saved': round(float(summary.get('vehicle_hours_saved_day', 0.0)), 2),
+        'useful_hours': int(summary.get('hours_useful', 0)),
+        'peak_diversion_rate': round(float(summary.get('peak_diversion', 0.0)), 4),
+        'fallback': bool(result.get('fallback', False)),
+    }
+
+
+def _benefit_verdict(metrics):
+    if metrics['peak_vc'] >= 0.85:
+        readiness = 'Near-gridlock'
+    elif metrics['peak_vc'] >= 0.65:
+        readiness = 'Heavy'
+    else:
+        readiness = 'Moderate'
+
+    if (metrics['vehicle_hours_saved'] >= 1.0 and
+            metrics['useful_hours'] >= 2 and metrics['peak_vc'] >= 0.85):
+        verdict = 'Prioritize'
+    elif (metrics['vehicle_hours_saved'] > 0 and
+          metrics['useful_hours'] >= 1 and metrics['peak_vc'] >= 0.65):
+        verdict = 'Consider'
+    else:
+        verdict = 'Monitor'
+    return {'verdict': verdict, 'site_readiness': readiness}
+
+
+def _build_recommendations(model_name, day_num=4):
     roads = []
     for road in road_mapping:
         row = {'road': road}
@@ -243,6 +291,19 @@ def _build_recommendations(model_name):
         row['recommendation'] = reco['text']
         row['recommendation_level'] = reco['level']
         row['conclusive'] = site_status == 'compatible_assumed'
+        benefit = _benefit_metrics(model_name, road, day_num)
+        row.update(benefit)
+        row.update(_benefit_verdict(benefit))
+        if site_status == 'compatible_assumed':
+            benefit_rules = {
+                'Prioritize': ('recommended', 'Flyover recommended'),
+                'Consider': ('second', 'Flyover recommended (second priority)'),
+                'Monitor': ('not_recommended', 'Flyover not recommended: modelled benefit is limited'),
+            }
+            row['recommendation_level'], row['recommendation'] = benefit_rules[row['verdict']]
+        elif row['verdict'] == 'Monitor':
+            row['recommendation_level'] = 'provisional'
+            row['recommendation'] = 'Provisional verdict: modelled flyover benefit is limited'
         if not row['open_items'] and not row['conclusive']:
             row['open_items'] = UNKNOWN_OPEN_ITEMS
         roads.append(row)
@@ -255,18 +316,94 @@ def _build_recommendations(model_name):
 @app.route('/flyover-recommendation', methods=['GET'])
 def flyover_recommendation():
     model_name = request.args.get('model', DEFAULT_MODEL).lower()
+    day_num = int(request.args.get('day_num', 4))
     if model_name not in MODELS:
         return jsonify({'error': f'Model "{model_name}" not found. Available: {sorted(MODELS)}'}), 400
-    if model_name not in _RECO_CACHE:
-        _RECO_CACHE[model_name] = _build_recommendations(model_name)
+    if not 0 <= day_num <= 6:
+        return jsonify({'error': 'day_num must be between 0 and 6'}), 400
+    cache_key = (model_name, day_num)
+    if cache_key not in _RECO_CACHE:
+        _RECO_CACHE[cache_key] = _build_recommendations(model_name, day_num)
     return jsonify({
         'model': model_name,
+        'day_num': day_num,
         'diversion': FLYOVER_DIVERSION,
         'thresholds': {'high': HIGH_TIER, 'medium': MEDIUM_TIER},
+        'benefit_thresholds': {
+            'near_gridlock_vc': 0.85,
+            'heavy_vc': 0.65,
+            'min_saved_vehicle_hours': 1.0,
+            'min_useful_hours': 2,
+        },
         'environment_note': ENVIRONMENT_NOTE,
         'inconclusive_note': INCONCLUSIVE_NOTE,
         'data_notes': RECO_NOTES,
-        'roads': _RECO_CACHE[model_name]
+        'roads': _RECO_CACHE[cache_key]
+    })
+
+
+@app.route('/flyover-sensitivity', methods=['GET'])
+def flyover_sensitivity():
+    model_name = request.args.get('model', DEFAULT_MODEL).lower()
+    road = request.args.get('road')
+    day_num = int(request.args.get('day_num', 4))
+    runs = min(max(int(request.args.get('runs', 240)), 50), 500)
+    if model_name not in MODELS:
+        return jsonify({'error': f'Model "{model_name}" not found. Available: {sorted(MODELS)}'}), 400
+    if road not in road_mapping:
+        return jsonify({'error': f'Road "{road}" not found'}), 400
+    if not 0 <= day_num <= 6:
+        return jsonify({'error': 'day_num must be between 0 and 6'}), 400
+
+    rng = np.random.default_rng(42)
+    fields = {
+        'beta': (2.8, 5.2, 'BPR beta'),
+        'eligible_share': (0.28, 0.52, 'Eligible bike share'),
+        'ramp_penalty_min': (1.05, 1.95, 'Ramp penalty'),
+        'flyover_capacity_ratio': (0.21, 0.39, 'Flyover capacity'),
+        'pcu_bikes': (0.4, 0.6, 'Bike PCU'),
+        'logit_k': (1.4, 2.6, 'Choice-model slope'),
+    }
+    baseline = _benefit_metrics(model_name, road, day_num)
+    baseline.update(_benefit_verdict(baseline))
+    samples = []
+    for _ in range(runs):
+        overrides = {field: rng.uniform(low, high)
+                     for field, (low, high, _) in fields.items()}
+        metrics = _benefit_metrics_with_overrides(model_name, road, day_num, overrides)
+        metrics.update(_benefit_verdict(metrics))
+        samples.append(metrics)
+
+    def percentile(key, value):
+        return round(float(np.percentile([sample[key] for sample in samples], value)), 2)
+
+    tornado = []
+    base_values = {
+        'beta': 4.0, 'eligible_share': 0.4, 'ramp_penalty_min': 1.5,
+        'flyover_capacity_ratio': 0.3, 'pcu_bikes': 0.5, 'logit_k': 2.0,
+    }
+    for field, (_, _, label) in fields.items():
+        results = []
+        for factor in (0.7, 1.3):
+            metrics = _benefit_metrics_with_overrides(
+                model_name, road, day_num, {field: base_values[field] * factor})
+            results.append(metrics['vehicle_hours_saved'])
+        tornado.append({'parameter': field, 'label': label,
+                        'impact_hours': round(abs(results[1] - results[0]) / 2, 2)})
+    tornado.sort(key=lambda item: item['impact_hours'], reverse=True)
+
+    return jsonify({
+        'model': model_name, 'road': road, 'day_num': day_num, 'runs': runs,
+        'baseline': baseline,
+        'p10_p90': {
+            'vehicle_hours_saved': [percentile('vehicle_hours_saved', 10), percentile('vehicle_hours_saved', 90)],
+            'peak_diversion_rate': [percentile('peak_diversion_rate', 10), percentile('peak_diversion_rate', 90)],
+            'useful_hours': [percentile('useful_hours', 10), percentile('useful_hours', 90)],
+        },
+        'verdict_holds_pct': round(100 * sum(
+            sample['verdict'] == baseline['verdict'] for sample in samples
+        ) / len(samples), 1),
+        'tornado': tornado,
     })
 
 

@@ -109,6 +109,26 @@ The day-number mapping is:
 6 = Sunday
 ```
 
+## Flyover benefit and sensitivity APIs
+
+`GET /flyover-recommendation?model=gbm&day_num=4` ranks all roads using the
+dynamic model. Each road includes peak volume/capacity, vehicle-hours saved,
+useful hours, peak diversion rate, a `Prioritize`/`Consider`/`Monitor` benefit
+verdict, and the existing site-readiness fields.
+
+`GET /flyover-sensitivity?model=gbm&road=Hosa%20Road&day_num=4` samples
+uncertainty in the choice, demand-share, ramp, capacity, and PCU parameters.
+It returns P10/P90 benefit ranges, verdict stability, and a tornado-style
+parameter ranking. The endpoint accepts an optional `runs` value capped at 500.
+
+Run the unit and Flask integration tests after generating model artifacts:
+
+```bash
+python train_model.py
+python -m pip install pytest
+python -m pytest -q
+```
+
 ## Aryan's Unity-Flask integration
 
 `Unity-Sem7/Assets/TrafficAPIManager.cs` connects the Unity simulation to the Flask prediction API.
