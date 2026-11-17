@@ -672,6 +672,20 @@
     <div class="cmp-note" id="cmpNote"></div>
   </div>
 
+  <!-- BENEFIT VERDICT AND SENSITIVITY -->
+  <div class="charts-row">
+    <div class="hourly-section">
+      <div class="chart-title"><span></span> Flyover Benefit Verdict</div>
+      <div id="verdictSummary" class="cmp-note">Loading benefit metrics…</div>
+      <table class="cmp"><thead><tr><th>Rank</th><th>Road</th><th>v/c</th><th>Saved h/day</th><th>Useful h</th><th>Verdict</th></tr></thead><tbody id="verdictBody"></tbody></table>
+    </div>
+    <div class="hourly-section">
+      <div class="chart-title"><span></span> Sensitivity — <span id="sensitivityRoad">selected road</span></div>
+      <div id="sensitivitySummary" class="cmp-note">Loading parameter sensitivity…</div>
+      <div style="height:220px;"><canvas id="sensitivityChart"></canvas></div>
+    </div>
+  </div>
+
   <!-- BOTTOM ROW -->
   <div class="bottom-row">
     <!-- FLYOVER IMPACT -->
@@ -732,7 +746,7 @@ const NAMES  = {rf:'Random Forest', gbm:'Gradient Boosting'};
 const COLORS = {rf:'#00d4ff', gbm:'#b388ff'};
 const TARGETS = [['Cars','Cars'],['Motorcycles','Motorcycles'],['Buses','Buses'],['Trucks','Trucks + autos'],['Total_Vehicles','Total vehicles']];
 let model = 'gbm', flyoverOn = false, FLYOVER_IMPACT = {}, metrics = {}, cache = {}, reqId = 0;
-let hourlyChart = null, donutChart = null, weeklyChart = null;
+let hourlyChart = null, donutChart = null, weeklyChart = null, sensitivityChart = null;
 const $ = id => document.getElementById(id);
 const other = () => model === 'rf' ? 'gbm' : 'rf';
 const at = (g, d, h) => { const a = g[d][h]; return {cars:a[0], bikes:a[1], buses:a[2], trucks:a[3], total:a[4]}; };
@@ -796,9 +810,13 @@ async function predict() {
 
   let G, base;
   try {
-    const [rf, gbm, b] = await Promise.all([
+    const [rf, gbm, b, verdict, sensitivity] = await Promise.all([
       getGrid('rf', road, flyoverOn), getGrid('gbm', road, flyoverOn),
-      flyoverOn ? getGrid(model, road, false) : null]);
+      flyoverOn ? getGrid(model, road, false) : null,
+      fetch(`/flyover-verdict?model=${model}&road=${encodeURIComponent(road)}&day_num=${dayNum}`)
+        .then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Verdict request failed'); return j; }),
+      fetch(`/flyover-sensitivity?model=${model}&road=${encodeURIComponent(road)}&day_num=${dayNum}`)
+        .then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Sensitivity request failed'); return j; })]);
     G = {rf, gbm}; base = b;
   } catch (e) {
     $('err').textContent = 'Could not get predictions: ' + e.message + '. Make sure app.py is running and open http://127.0.0.1:5000';
@@ -840,8 +858,40 @@ async function predict() {
   renderDonutChart(pred);
   renderWeeklyChart(grid, hour, dayNum);
   renderFlyoverPanel(road, basePred, pred);
+  renderVerdict(verdict);
+  renderSensitivity(sensitivity);
   renderHeat(grid, dayNum, hour, Math.max(...ref) * 1.1);
   renderBest(grid[dayNum], dayNum);
+}
+
+function renderVerdict(data) {
+  const selected = data.selected;
+  $('verdictSummary').textContent = selected
+    ? `${selected.site_readiness} site readiness · ${selected.verdict} · ${selected.vehicle_hours_saved.toFixed(2)} vehicle-hours saved/day · ${selected.useful_hours} useful hours/day.`
+    : 'No verdict available for the selected road.';
+  $('verdictBody').innerHTML = (data.ranking || []).slice(0, 8).map(item =>
+    `<tr><td>${item.rank}</td><td>${item.road}</td><td>${item.peak_vc.toFixed(2)}</td><td>${item.vehicle_hours_saved.toFixed(2)}</td><td>${item.useful_hours}</td><td class="${item.verdict === 'Prioritize' ? 'up' : item.verdict === 'Monitor' ? 'down' : ''}">${item.verdict}</td></tr>`
+  ).join('');
+}
+
+function renderSensitivity(data) {
+  $('sensitivityRoad').textContent = data.road;
+  const p = data.p10_p90;
+  $('sensitivitySummary').textContent =
+    `${data.runs} runs · verdict holds in ${data.verdict_holds_pct}% · saved hours P10–P90: ${p.vehicle_hours_saved[0].toFixed(2)}–${p.vehicle_hours_saved[1].toFixed(2)} · useful hours P10–P90: ${p.useful_hours[0].toFixed(1)}–${p.useful_hours[1].toFixed(1)}.`;
+  if (sensitivityChart) sensitivityChart.destroy();
+  sensitivityChart = new Chart($('sensitivityChart').getContext('2d'), {
+    type: 'bar',
+    data: { labels: data.tornado.map(item => item.parameter), datasets: [{
+      label: 'Absolute impact on saved vehicle-hours/day',
+      data: data.tornado.map(item => item.impact_hours),
+      backgroundColor: '#7c3aed'
+    }] },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { grid: {color: 'rgba(255,255,255,0.04)'}, ticks: {color: '#64748b'} },
+                y: { grid: {display: false}, ticks: {color: '#94a3b8', font: {size: 10}} } } }
+  });
 }
 
 function renderHourlyChart(G, dayNum, hour) {
