@@ -1,0 +1,119 @@
+{
+  "_meta": {
+    "note": "ASSUMPTIONS unless a 'source' says otherwise. Edit values here; no code change needed.",
+    "pcu": {
+      "bikes": 0.5,
+      "cars": 1.0,
+      "buses": 3.0,
+      "trucks": 3.0,
+      "pcu_source": "VERIFY against IRC:106 before putting on a slide"
+    },
+    "beta": 4.0,
+    "fallback_diversion": 0.3
+  },
+  "default": {
+    "stretch_km": 2.0,
+    "free_flow_min": 3.0,
+    "peak_ratio": 2.3,
+    "peak_vc": 0.85,
+    "eligible_share": 0.4,
+    "flyover_time_factor": 0.85,
+    "ramp_penalty_min": 1.5,
+    "logit_k": 2.0,
+    "source": "peak_ratio from Hosa Road Google data (curve shared by all roads until more junctions are measured)",
+    "calib_vc": 0.85,
+    "flyover_capacity_ratio": 0.3
+  },
+  "roads": {
+    "Sony World Junction": {
+      "peak_vc": 1.05,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "Sarjapur Road": {
+      "peak_vc": 1.03,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "Anil Kumble Circle": {
+      "peak_vc": 1.0,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "Trinity Circle": {
+      "peak_vc": 0.97,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "CMH Road": {
+      "peak_vc": 0.93,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "100 Feet Road": {
+      "peak_vc": 0.91,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "Tumkur Road": {
+      "peak_vc": 0.88,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "South End Circle": {
+      "peak_vc": 0.88,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "Hebbal Flyover": {
+      "peak_vc": 0.87,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "Jayanagar 4th Block": {
+      "peak_vc": 0.86,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "Marathahalli Bridge": {
+      "peak_vc": 0.85,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "Ballari Road": {
+      "peak_vc": 0.84,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "ITPL Main Road": {
+      "peak_vc": 0.82,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "Silk Board Junction": {
+      "peak_vc": 0.82,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "Bommasandra": {
+      "peak_vc": 0.77,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "Hosur Road": {
+      "peak_vc": 0.77,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "Yeshwanthpur Circle": {
+      "peak_vc": 0.76,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "Electronic City": {
+      "peak_vc": 0.75,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "Hosa Road": {
+      "peak_vc": 0.73,
+      "source": "peak_vc ASSUMED (volume-scaled). Delay curve from Google Maps typical traffic, Fri ~8:30 AM 3-7 min vs Sat 3 AM ~3 min, 1.6 km (read from screenshots, VERIFY)",
+      "stretch_km": 1.6,
+      "free_flow_min": 3.0
+    },
+    "Kudlu Gate": {
+      "peak_vc": 0.71,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "Bommanahalli": {
+      "peak_vc": 0.65,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    },
+    "HSR Layout": {
+      "peak_vc": 0.64,
+      "source": "peak_vc ASSUMED: 0.50 + 0.55 x (road peak volume / busiest road peak volume)"
+    }
+  }
+}

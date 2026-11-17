@@ -49,6 +49,10 @@ public class TrafficAPIManager : MonoBehaviour
         public int buses;
         public int trucks;
         public int total;
+
+        // Added by the dynamic flyover model (Flask /predict). Old servers omit them, so they stay 0.
+        public int bikes_before;
+        public float diversion_rate;   // share of all bikes that use the flyover at this road/day/hour
     }
 
     [Serializable]
@@ -124,7 +128,8 @@ public class TrafficAPIManager : MonoBehaviour
     private string lastRequestedQuery;
     private bool refreshQueued;
     private bool appliedFlyoverOn;
-    private float appliedRoutingPercentage;
+    private float appliedRoutingPercentage;          // percentage actually used (server rate if present)
+    private float appliedInspectorPercentage;        // last Inspector value seen (for change detection)
 
     public static string DayName(int day)
     {
@@ -139,6 +144,7 @@ public class TrafficAPIManager : MonoBehaviour
     {
         appliedFlyoverOn = flyoverOn;
         appliedRoutingPercentage = FlyoverBikeRoutingPercentage;
+        appliedInspectorPercentage = FlyoverBikeRoutingPercentage;
         StartCoroutine(RefreshLoop());
     }
 
@@ -177,7 +183,7 @@ public class TrafficAPIManager : MonoBehaviour
         // The Flyover tick box or percentage was changed in the Inspector during Play mode.
         if (flyoverOn != appliedFlyoverOn)
             SetFlyover(flyoverOn);
-        else if (!Mathf.Approximately(FlyoverBikeRoutingPercentage, appliedRoutingPercentage))
+        else if (!Mathf.Approximately(FlyoverBikeRoutingPercentage, appliedInspectorPercentage))
             RecalculateRouting(true);
 
         // Road / Day / Hour / Model / URL was changed in the Inspector during Play mode.
@@ -390,7 +396,14 @@ public class TrafficAPIManager : MonoBehaviour
     private void RecalculateRouting(bool notify)
     {
         int motorcycles = CurrentPrediction == null ? 0 : CurrentPrediction.motorcycles;
-        appliedRoutingPercentage = FlyoverBikeRoutingPercentage;
+        appliedInspectorPercentage = FlyoverBikeRoutingPercentage;
+
+        // Use the congestion-driven rate from Flask when it is present; otherwise keep the Inspector value.
+        bool serverHasRate = CurrentPrediction != null &&
+                             (CurrentPrediction.bikes_before > 0 || CurrentPrediction.diversion_rate > 0f);
+        appliedRoutingPercentage = serverHasRate
+            ? Mathf.Clamp01(CurrentPrediction.diversion_rate)
+            : FlyoverBikeRoutingPercentage;
 
         if (!flyoverOn)
         {

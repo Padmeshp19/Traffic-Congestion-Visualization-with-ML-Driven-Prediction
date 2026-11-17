@@ -4,6 +4,7 @@ import json
 import os
 import numpy as np
 import pandas as pd
+import flyover_model as fm          # dynamic, congestion-driven flyover diversion
 
 app = Flask(__name__)
 
@@ -31,6 +32,27 @@ def load_json(path):
     return {}
 
 FLYOVER_DIVERSION = 0.30          # share of 2-wheelers diverted onto the flyover (applies to EVERY road)
+
+# Dynamic diversion drives /predict and /predict-grid (the impact card + Unity).
+# The recommendation/verdict layer keeps the fixed-30% scenario for now, because its tier thresholds
+# (1900 / 3300 bikes per hour) were hand-set for 30%. Flip to True only after the thresholds are redone
+# (planned: benefit-based verdict).
+RECO_USE_DYNAMIC = False
+
+_DIV_CACHE = {}
+def day_diversion(model_name, road, day_num):
+    """24 hourly diversion rates (share of bikes) for one road and day, from the delay model.
+    Falls back to FLYOVER_DIVERSION if the road has no entry in data/flyover_params.json."""
+    key = (model_name, road, day_num)
+    if key not in _DIV_CACHE:
+        rows = [[day_num, h, 1 if day_num >= 5 else 0,
+                 1 if (7 <= h <= 10 or 17 <= h <= 20) else 0, road_mapping[road]] for h in range(24)]
+        X = pd.DataFrame(rows, columns=['Day_Num','Hour','Is_Weekend','Peak_Flag','Road_Encoded'])
+        p = np.maximum(0, np.round(MODELS[model_name].predict(X))).astype(int)
+        hourly = [{'cars': int(r[0]), 'bikes': int(r[1]), 'buses': int(r[2]), 'trucks': int(r[3])} for r in p]
+        _DIV_CACHE[key] = [h['diversion_rate'] for h in fm.compute_day(road, hourly)['hours']]
+    return _DIV_CACHE[key]
+
 flyover_impact = load_json('models/flyover_impact.json')
 model_metrics  = load_json('models/model_metrics.json')
 # ---- Home route ----
@@ -75,8 +97,9 @@ def predict():
     # Apply flyover reduction if toggled on (unchanged logic)
     bikes_before = bikes
     diverted = 0
+    diversion_rate = day_diversion(model_name, road, day_num)[hour]
     if flyover:                                   # works for all 22 roads, not just the 7 corridor junctions
-        diverted = int(bikes * FLYOVER_DIVERSION)
+        diverted = int(bikes * diversion_rate)
         bikes   -= diverted
         total    = cars + bikes + buses + trucks
 
@@ -93,7 +116,8 @@ def predict():
         'trucks':    trucks,
         'total':     total,
         'bikes_before':   bikes_before,
-        'bikes_diverted': diverted
+        'bikes_diverted': diverted,
+        'diversion_rate': round(diversion_rate, 4)   # NEW key; all existing keys unchanged
     })
 
 # ---- Full week grid in ONE request (fast path used by the dashboard) ----
@@ -115,7 +139,8 @@ def predict_grid():
 
     pred = np.maximum(0, np.round(MODELS[model_name].predict(X))).astype(int)[:, :4]
     if flyover:                                      # same rule as /predict, all roads
-        pred[:, 1] -= (pred[:, 1] * FLYOVER_DIVERSION).astype(int)
+        rates = np.array([r for d in range(7) for r in day_diversion(model_name, road, d)])
+        pred[:, 1] -= (pred[:, 1] * rates).astype(int)
     total = pred.sum(axis=1, keepdims=True)
     grid  = np.hstack([pred, total]).reshape(7, 24, 5).tolist()   # [day][hour] = [cars, bikes, buses, trucks, total]
 
@@ -187,7 +212,11 @@ def _road_demand(model_name, road):
              road_mapping[road]] for d in range(7) for h in range(24)]
     X = pd.DataFrame(rows, columns=['Day_Num', 'Hour', 'Is_Weekend', 'Peak_Flag', 'Road_Encoded'])
     pred = np.maximum(0, np.round(MODELS[model_name].predict(X))).astype(int)[:, :4]
-    diverted = (pred[:, 1] * FLYOVER_DIVERSION).astype(int)          # same rule as /predict
+    if RECO_USE_DYNAMIC:
+        rates = np.array([r for d in range(7) for r in day_diversion(model_name, road, d)])
+    else:
+        rates = FLYOVER_DIVERSION
+    diverted = (pred[:, 1] * rates).astype(int)
     totals = pred.sum(axis=1)
     peak = X['Peak_Flag'].to_numpy() == 1
     return {
