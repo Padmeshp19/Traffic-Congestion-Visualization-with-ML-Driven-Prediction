@@ -15,6 +15,7 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import mean_absolute_error, r2_score
+from flyover_model import compute_day, load_params
 
 os.makedirs('models', exist_ok=True)
 FLYOVER_DIVERSION = 0.30          # share of 2-wheelers moved to the flyover (same value app.py uses)
@@ -134,12 +135,25 @@ json.dump({'rf': rf_scores, 'gbm': gbm_scores, 'train_rows': int(len(X_tr)), 'te
            'roads': len(roads)}, open('models/model_metrics.json', 'w'), indent=2)
 
 # ---------------------------------------------------------------- 5. flyover impact for ALL 22 roads
+flyover_params = load_params()
 impact = {}
 for road, g in agg.groupby('Road_Name'):
-    bikes, total = g['Motorcycles'].mean(), g['Total_Vehicles'].mean()
-    diverted = int(bikes * FLYOVER_DIVERSION)
+    daily = []
+    for day_num in range(7):
+        day = g[g['Day_Num'] == day_num]
+        rows = day.sort_values('Hour')[VEHICLES].rename(columns={
+            'Cars': 'cars', 'Motorcycles': 'motorcycles',
+            'Buses': 'buses', 'Trucks': 'trucks',
+        }).to_dict('records')
+        daily.append(compute_day(rows, road=road, params=flyover_params))
+    bikes = g['Motorcycles'].mean()
+    total = g['Total_Vehicles'].mean()
+    diverted = np.mean([
+        hour['diverted'] for result in daily for hour in result['hours']
+    ])
     impact[road] = {'avg_motorcycles': int(round(bikes)), 'avg_total': int(round(total)),
-                    'bikes_diverted': diverted, 'congestion_reduction_pct': round(100 * diverted / total, 1)}
+                    'bikes_diverted': int(round(diverted)),
+                    'congestion_reduction_pct': round(100 * diverted / total, 1) if total else 0.0}
 json.dump(impact, open('models/flyover_impact.json', 'w'), indent=2)
 
 print(f'\nSaved models + flyover_impact.json for {len(impact)} roads')
