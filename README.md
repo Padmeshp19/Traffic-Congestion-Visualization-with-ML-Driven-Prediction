@@ -6,8 +6,10 @@ Capstone project for visualizing and predicting traffic congestion using a Flask
 
 ```text
 app.py                              Flask API and dashboard server
+flyover_model.py                    Dynamic delay/diversion and sensitivity model
 train_model.py                     Trains the traffic prediction models
 requirements.txt                   Python dependencies
+data/flyover_params.json            Editable flyover assumptions and road parameters
 models/                            Generated model metadata and trained model files
 templates/dashboard.html           Browser dashboard
 Unity-Sem7/                        Unity traffic simulation
@@ -50,6 +52,12 @@ Start the Flask server:
 
 ```bash
 python app.py
+```
+
+Run the dynamic flyover model tests:
+
+```bash
+python -m pytest -q
 ```
 
 The API is available at:
@@ -122,7 +130,7 @@ The day-number mapping is:
 - exposes the latest prediction to Unity scripts;
 - periodically refreshes the prediction;
 - provides Flyover ON/OFF behavior;
-- routes 30% of predicted motorcycles to the flyover when enabled;
+- routes the server-computed dynamic diversion to the flyover when enabled;
 - preserves the total motorcycle count;
 - reports API and JSON parsing errors in the Unity Console.
 
@@ -222,7 +230,10 @@ private void OnDisable()
 
 ### Flyover behavior
 
-Unity sends `flyover: false` to Flask intentionally. The Flask endpoint has its own flyover-reduction option, but the Unity simulation performs the route split locally to avoid applying the 30% reduction twice.
+Unity sends the current flyover state to Flask. Flask computes the dynamic
+diversion using `flyover_model.py`, and Unity routes the returned
+`bikes_diverted` count without applying a second split. Older servers are
+supported through the Inspector percentage fallback.
 
 For a prediction of 100 motorcycles:
 
@@ -232,8 +243,8 @@ Flyover OFF:
   Flyover motorcycles = 0
 
 Flyover ON:
-  Ground motorcycles = 70
-  Flyover motorcycles = 30
+  Ground motorcycles = predicted motorcycles - bikes_diverted
+  Flyover motorcycles = bikes_diverted
 ```
 
 The conservation rule is:
@@ -285,7 +296,7 @@ Every spawned vehicle using `LaneCarController` must have a valid `LaneManager` 
 ## Team integration responsibilities
 
 ```text
-Aryan Urs   Flask connection, TrafficAPIManager, 30% bike route split
+Aryan Urs   Flask connection, TrafficAPIManager, dynamic bike route split
 Swathi M    Junction vehicle spawner and ground traffic simulation
 Adithya C   UI panel, flyover motorcycle presentation and movement
 Padmesh     ML models, Flask backend and dashboard model selector
@@ -314,13 +325,16 @@ Do not spawn `flyoverMotorcycles` again on the ground. This would duplicate moto
 ```text
 [ ] Flask starts successfully
 [ ] POST /predict returns the required fields
+[ ] POST /predict returns a road/hour-specific diversion_rate
+[ ] /flyover-verdict returns v/c, saved vehicle-hours, useful hours, and ranking
+[ ] /flyover-sensitivity returns P10-P90 and verdict stability
 [ ] Unity uses the correct Flask URL
 [ ] TrafficAPIManager is attached to a scene GameObject
 [ ] Unity Console shows a received prediction
 [ ] Spawner subscribes to PredictionUpdated
 [ ] Spawner subscribes to MotorcycleRoutingUpdated
 [ ] Flyover OFF sends all motorcycles to the ground route
-[ ] Flyover ON routes floor(predicted motorcycles × 0.30) to the flyover
+[ ] Flyover ON routes the server's bikes_diverted count to the flyover
 [ ] Ground + flyover motorcycles equals the predicted count
 [ ] Ground and flyover vehicles use separate spawn points/lanes
 [ ] Vehicles have valid LaneManager references

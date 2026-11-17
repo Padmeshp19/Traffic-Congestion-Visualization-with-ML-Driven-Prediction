@@ -34,6 +34,9 @@ public class TrafficAPIManager : MonoBehaviour
         public int buses;
         public int trucks;
         public int total;
+        public int bikes_before;
+        public int bikes_diverted;
+        public float diversion_rate;
     }
 
     [Header("Flask API")]
@@ -110,14 +113,14 @@ public class TrafficAPIManager : MonoBehaviour
 
         IsRequestRunning = true;
 
-        // The Flask /predict route is POST + JSON. Send flyover=false because Unity
-        // performs the 30% route split and must not apply Flask's reduction twice.
+        // Flask owns the dynamic diversion calculation. Unity only routes the
+        // returned ground and flyover counts to their respective spawners.
         var requestBody = new PredictionRequest
         {
             road = road,
             day_num = dayNumber,
             hour = hour,
-            flyover = false,
+            flyover = flyoverOn,
             model = model
         };
 
@@ -194,8 +197,16 @@ public class TrafficAPIManager : MonoBehaviour
             GroundMotorcycles = motorcycles;
             FlyoverMotorcycles = 0;
         }
+        else if (CurrentPrediction != null && CurrentPrediction.bikes_diverted > 0)
+        {
+            FlyoverMotorcycles = Mathf.Min(CurrentPrediction.bikes_diverted,
+                                           CurrentPrediction.bikes_before);
+            GroundMotorcycles = motorcycles;
+        }
         else
         {
+            // Compatibility fallback for older Flask servers that do not return
+            // dynamic diversion fields.
             FlyoverMotorcycles = Mathf.FloorToInt(
                 motorcycles * Mathf.Clamp01(flyoverBikeRoutingPercentage));
             GroundMotorcycles = motorcycles - FlyoverMotorcycles;
