@@ -720,6 +720,13 @@
     <div class="cmp-note" id="cmpNote"></div>
   </div>
 
+    <!-- BASELINE COMPARISON (filled from /baseline-comparison; hidden if the file has not been generated) -->
+  <div class="hourly-section" id="baselineSection" style="display:none">
+    <div class="chart-title"><span></span> Do the models beat simple rules? — Baseline Comparison (Total vehicles, held-out test set)</div>
+    <table class="cmp"><thead><tr><th>Method</th><th>Type</th><th>R²</th><th>MAE</th></tr></thead><tbody id="baselineBody"></tbody></table>
+    <div class="cmp-note" id="baselineNote"></div>
+  </div>
+
   <!-- BOTTOM ROW -->
   <div class="bottom-row">
     <!-- FLYOVER IMPACT -->
@@ -869,6 +876,25 @@ function updateMetricsUI() {
     return `<tr><td>${label}</td>${c('rf', r.r2.toFixed(3))}${c('gbm', g.r2.toFixed(3))}${c('rf', r.mae.toLocaleString())}${c('gbm', g.mae.toLocaleString())}<td class="${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '+' : ''}${d.toFixed(3)}</td></tr>`;
   }).join('');
   $('cmpNote').textContent = `Gradient Boosting has the higher R² on ${wins} of ${TARGETS.length} targets (average gain ${(gainSum / TARGETS.length).toFixed(3)}). Both models use the same 5 inputs (road, day, hour, weekend, peak), so the gap is small. The selected model's columns are highlighted.`;
+}
+
+// Baseline comparison card: simple lookup rules vs the trained models (data from scripts/baseline_compare.py)
+function loadBaselineComparison() {
+  fetch('/baseline-comparison').then(r => r.ok ? r.json() : null).then(b => {
+    if (!b || !b.rows) return;                      // file not generated yet: keep the card hidden
+    const best = b.strongest_baseline;
+    $('baselineBody').innerHTML = b.rows.map(r => {
+      const isModel = r.type === 'model', isBest = r.name === best.name;
+      return `<tr><td class="${isModel ? 'sel' : ''}">${r.name}${isBest ? ' (strongest simple rule)' : ''}</td>` +
+             `<td>${isModel ? 'ML model' : 'Simple rule'}</td><td>${r.r2.toFixed(3)}</td><td>${Math.round(r.mae).toLocaleString()}</td></tr>`;
+    }).join('');
+    const g = b.gains_vs_strongest_baseline || {};
+    const part = n => g[n] ? `${n} ${g[n].r2_gain >= 0 ? '+' : ''}${g[n].r2_gain.toFixed(3)} R², MAE ${g[n].mae_change_pct > 0 ? '+' : ''}${g[n].mae_change_pct}%` : '';
+    $('baselineNote').textContent =
+      `The strongest simple rule is "${best.name}" (R² ${best.r2.toFixed(3)}). Compared with it: ${[part('Gradient Boosting'), part('Random Forest')].filter(Boolean).join('; ')}. ` +
+      `So road and hour explain most of the pattern, and the models add a modest gain. One random split of ${b.test_rows} test rows, so read small gaps with care.`;
+    $('baselineSection').style.display = '';
+  }).catch(() => {});
 }
 
 // Tell Flask which selection the dashboard is showing, so Unity can follow it. Fire-and-forget.
@@ -1335,7 +1361,7 @@ async function renderFeasibility(road, selectedModel, dayNum) {
 Promise.all([
   fetch('/flyover-impact').then(r => r.json()).catch(() => ({})),
   fetch('/model-metrics').then(r => r.json()).catch(() => ({}))
-]).then(([fi, mt]) => { FLYOVER_IMPACT = fi; metrics = mt; updateMetricsUI(); predict(); });
+]).then(([fi, mt]) => { FLYOVER_IMPACT = fi; metrics = mt; updateMetricsUI(); predict(); loadBaselineComparison(); });
 </script>
 </body>
 </html>

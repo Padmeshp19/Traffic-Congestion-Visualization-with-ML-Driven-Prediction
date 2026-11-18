@@ -1,0 +1,93 @@
+{
+  "model": "gbm",
+  "target": "Total_Vehicles",
+  "rows_explained": 3304,
+  "base_value": 23387.111237230416,
+  "additivity_max_gap": 1.7462298274040222e-10,
+  "features": [
+    {
+      "feature": "Road_Encoded",
+      "mean_abs_shap": 8166.437196088286,
+      "share_pct": 36.7644437657086
+    },
+    {
+      "feature": "Hour",
+      "mean_abs_shap": 7052.023773796863,
+      "share_pct": 31.747471417570182
+    },
+    {
+      "feature": "Peak_Flag",
+      "mean_abs_shap": 6523.809125134345,
+      "share_pct": 29.369504468130035
+    },
+    {
+      "feature": "Day_Num",
+      "mean_abs_shap": 418.9603687067306,
+      "share_pct": 1.886115639603165
+    },
+    {
+      "feature": "Is_Weekend",
+      "mean_abs_shap": 51.63707788850825,
+      "share_pct": 0.2324647089880164
+    }
+  ],
+  "groups": [
+    {
+      "group": "Time of day",
+      "features": [
+        "Hour",
+        "Peak_Flag"
+      ],
+      "mean_abs_shap": 10197.209945182207,
+      "share_pct": 54.23440422988107
+    },
+    {
+      "group": "Road",
+      "features": [
+        "Road_Encoded"
+      ],
+      "mean_abs_shap": 8166.437196088282,
+      "share_pct": 43.43363119829093
+    },
+    {
+      "group": "Day of week",
+      "features": [
+        "Day_Num",
+        "Is_Weekend"
+      ],
+      "mean_abs_shap": 438.45844093472044,
+      "share_pct": 2.3319645718280015
+    }
+  ],
+  "hour_profile": [
+    -13436.285391596706,
+    -16816.509461172802,
+    -17736.330335510884,
+    -18112.23473254431,
+    -17076.457902087306,
+    -13288.895812528697,
+    -8508.811078032631,
+    421.7420519806392,
+    15576.289732371037,
+    16932.584579218907,
+    11820.468850708325,
+    2500.234617734094,
+    3137.4113280029023,
+    3175.0353034644813,
+    2054.4998722842793,
+    1094.3264345988728,
+    3577.541360852487,
+    13194.637311443832,
+    21107.03130650081,
+    17135.12043137671,
+    8357.238188967654,
+    -1503.0405588446322,
+    -7741.163661414278,
+    -11857.729634168323
+  ],
+  "weekend_effect": {
+    "weekday_mean_shap": 98.21407572621554,
+    "weekend_mean_shap": -246.76233153155667
+  },
+  "note": "SHAP describes how the model behaves on the 22 roads it was trained on. It does not prove the model is correct. Road_Encoded is an integer label, so its effect is not interpretable beyond \"road matters\"."
+}

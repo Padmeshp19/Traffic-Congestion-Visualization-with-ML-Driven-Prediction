@@ -1,0 +1,72 @@
+{
+  "target": "Total_Vehicles",
+  "train_rows": 2643,
+  "test_rows": 661,
+  "rows": [
+    {
+      "name": "Gradient Boosting",
+      "type": "model",
+      "r2": 0.8566,
+      "mae": 4545.2
+    },
+    {
+      "name": "Random Forest",
+      "type": "model",
+      "r2": 0.8352,
+      "mae": 4897.2
+    },
+    {
+      "name": "Road + hour",
+      "type": "baseline",
+      "r2": 0.8303,
+      "mae": 4865.8
+    },
+    {
+      "name": "Road + weekend + hour, else road + hour",
+      "type": "baseline",
+      "r2": 0.7925,
+      "mae": 5366.6
+    },
+    {
+      "name": "Road + weekend + hour, else road mean",
+      "type": "baseline",
+      "r2": 0.7487,
+      "mae": 5975.9
+    },
+    {
+      "name": "Road + weekend + hour, else global mean",
+      "type": "baseline",
+      "r2": 0.6812,
+      "mae": 6578.4
+    },
+    {
+      "name": "Road mean",
+      "type": "baseline",
+      "r2": 0.3105,
+      "mae": 11471.0
+    },
+    {
+      "name": "Global mean",
+      "type": "baseline",
+      "r2": -0.0004,
+      "mae": 14151.2
+    }
+  ],
+  "strongest_baseline": {
+    "name": "Road + hour",
+    "r2": 0.8303,
+    "mae": 4865.8
+  },
+  "gains_vs_strongest_baseline": {
+    "Random Forest": {
+      "r2_gain": 0.0049,
+      "mae_change_pct": 0.6
+    },
+    "Gradient Boosting": {
+      "r2_gain": 0.0263,
+      "mae_change_pct": -6.6
+    }
+  },
+  "fallback_rows": 64,
+  "note": "One random split (20% test, random_state=42, stratified by road). Baselines are lookup averages computed from the training rows only."
+}

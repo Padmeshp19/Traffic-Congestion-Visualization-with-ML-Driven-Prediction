@@ -166,6 +166,16 @@ def get_flyover_impact():
 def get_model_metrics():
     return jsonify(model_metrics)
 
+# ---- Baseline comparison route (written by scripts/baseline_compare.py) ----
+# Read on every request, so re-running the script updates the dashboard without restarting Flask.
+@app.route('/baseline-comparison', methods=['GET'])
+def get_baseline_comparison():
+    data = load_json('models/baseline_comparison.json')
+    if not data:
+        return jsonify({'error': 'models/baseline_comparison.json not found. '
+                                 'Run: python scripts/baseline_compare.py'}), 404
+    return jsonify(data)
+
 # ---- Flyover recommendation: demand (from the models) + site readiness (from a config file) ----
 # Additive only: /predict, /predict-grid, /flyover-impact and /model-metrics are untouched, and the
 # Unity integration (which uses /predict) is not affected. If the two JSON files are missing the
