@@ -14,7 +14,7 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: |
-          python -m py_compile app.py flyover_model.py train_model.py scripts/baseline_compare.py scripts/explain_model.py
+          python -m py_compile app.py flyover_model.py train_model.py scripts/baseline_compare.py scripts/explain_model.py scripts/cross_validate.py
           pip install -r requirements.txt -r requirements-analysis.txt pytest
       - name: Generate model artifacts
         run: python train_model.py

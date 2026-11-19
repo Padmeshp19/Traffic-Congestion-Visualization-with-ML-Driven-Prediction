@@ -1,0 +1,763 @@
+{
+  "target": "Total_Vehicles",
+  "rows": 3304,
+  "silk_board_family": [
+    "Bommanahalli",
+    "Bommasandra",
+    "Electronic City",
+    "HSR Layout",
+    "Hosa Road",
+    "Kudlu Gate",
+    "Silk Board Junction"
+  ],
+  "leave_one_day_out": {
+    "folds": 7,
+    "pooled": [
+      {
+        "name": "Gradient Boosting",
+        "type": "model",
+        "r2": 0.8449820762516336,
+        "mae": 4742.501923019079,
+        "mae_pct_of_mean": 20.21572697576595
+      },
+      {
+        "name": "Road + hour (strongest simple rule)",
+        "type": "baseline",
+        "r2": 0.8421216429834647,
+        "mae": 4692.77903551251,
+        "mae_pct_of_mean": 20.003774648788372
+      },
+      {
+        "name": "Random Forest",
+        "type": "model",
+        "r2": 0.8267078329301886,
+        "mae": 4898.073093467418,
+        "mae_pct_of_mean": 20.878875743680812
+      },
+      {
+        "name": "Road mean",
+        "type": "baseline",
+        "r2": 0.30544048242952915,
+        "mae": 11335.012986103045,
+        "mae_pct_of_mean": 48.31743487158072
+      },
+      {
+        "name": "Global mean",
+        "type": "baseline",
+        "r2": -0.0008182428963292576,
+        "mae": 14089.331753108332,
+        "mae_pct_of_mean": 60.05819051107679
+      }
+    ],
+    "per_day": [
+      {
+        "day_num": 0,
+        "day": "Monday",
+        "rows": 450,
+        "methods": {
+          "Gradient Boosting": {
+            "r2": 0.847292285217763,
+            "mae": 4690.154973559875,
+            "mae_pct_of_mean": 19.00321408060521
+          },
+          "Random Forest": {
+            "r2": 0.8148861346813775,
+            "mae": 5076.925879780263,
+            "mae_pct_of_mean": 20.570303094185736
+          },
+          "Road + hour (strongest simple rule)": {
+            "r2": 0.8237842889713554,
+            "mae": 4894.935407407408,
+            "mae_pct_of_mean": 19.832927905811765
+          }
+        }
+      },
+      {
+        "day_num": 1,
+        "day": "Tuesday",
+        "rows": 492,
+        "methods": {
+          "Gradient Boosting": {
+            "r2": 0.8655199260482467,
+            "mae": 4533.805731035339,
+            "mae_pct_of_mean": 19.98498253932621
+          },
+          "Random Forest": {
+            "r2": 0.8330775159963046,
+            "mae": 4980.563642953467,
+            "mae_pct_of_mean": 21.9542881511374
+          },
+          "Road + hour (strongest simple rule)": {
+            "r2": 0.8707482469007999,
+            "mae": 4257.909552845528,
+            "mae_pct_of_mean": 18.7688342015078
+          }
+        }
+      },
+      {
+        "day_num": 2,
+        "day": "Wednesday",
+        "rows": 474,
+        "methods": {
+          "Gradient Boosting": {
+            "r2": 0.8459760947298138,
+            "mae": 4540.070617273272,
+            "mae_pct_of_mean": 19.410848934858283
+          },
+          "Random Forest": {
+            "r2": 0.8553955476609691,
+            "mae": 4351.33048505277,
+            "mae_pct_of_mean": 18.603899769675987
+          },
+          "Road + hour (strongest simple rule)": {
+            "r2": 0.8431952125774934,
+            "mae": 4548.4556258790435,
+            "mae_pct_of_mean": 19.44669862731568
+          }
+        }
+      },
+      {
+        "day_num": 3,
+        "day": "Thursday",
+        "rows": 471,
+        "methods": {
+          "Gradient Boosting": {
+            "r2": 0.8684841262708952,
+            "mae": 4383.36321611637,
+            "mae_pct_of_mean": 18.139095304925554
+          },
+          "Random Forest": {
+            "r2": 0.84544473395764,
+            "mae": 4590.186751015753,
+            "mae_pct_of_mean": 18.99496592889027
+          },
+          "Road + hour (strongest simple rule)": {
+            "r2": 0.8552600378404507,
+            "mae": 4564.924203821655,
+            "mae_pct_of_mean": 18.890425253475993
+          }
+        }
+      },
+      {
+        "day_num": 4,
+        "day": "Friday",
+        "rows": 487,
+        "methods": {
+          "Gradient Boosting": {
+            "r2": 0.8269634713117772,
+            "mae": 5025.213031552961,
+            "mae_pct_of_mean": 22.816418177833974
+          },
+          "Random Forest": {
+            "r2": 0.8056169703917944,
+            "mae": 5084.801502049231,
+            "mae_pct_of_mean": 23.086972968821662
+          },
+          "Road + hour (strongest simple rule)": {
+            "r2": 0.8304240605646449,
+            "mae": 4788.498596851471,
+            "mae_pct_of_mean": 21.741642741058175
+          }
+        }
+      },
+      {
+        "day_num": 5,
+        "day": "Saturday",
+        "rows": 460,
+        "methods": {
+          "Gradient Boosting": {
+            "r2": 0.8394413197299944,
+            "mae": 4893.351312453748,
+            "mae_pct_of_mean": 20.763613491300077
+          },
+          "Random Forest": {
+            "r2": 0.8147548266082832,
+            "mae": 5001.8838398761045,
+            "mae_pct_of_mean": 21.224141932186072
+          },
+          "Road + hour (strongest simple rule)": {
+            "r2": 0.8502957051308683,
+            "mae": 4678.607173913043,
+            "mae_pct_of_mean": 19.85240479045871
+          }
+        }
+      },
+      {
+        "day_num": 6,
+        "day": "Sunday",
+        "rows": 470,
+        "methods": {
+          "Gradient Boosting": {
+            "r2": 0.817609776884614,
+            "mae": 5134.566592362454,
+            "mae_pct_of_mean": 21.53337589966376
+          },
+          "Random Forest": {
+            "r2": 0.81319618453524,
+            "mae": 5205.3319895695995,
+            "mae_pct_of_mean": 21.830152243166076
+          },
+          "Road + hour (strongest simple rule)": {
+            "r2": 0.816219675209094,
+            "mae": 5142.817269503546,
+            "mae_pct_of_mean": 21.56797763850773
+          }
+        }
+      }
+    ],
+    "gains_vs_strongest_rule": {
+      "Gradient Boosting": {
+        "r2_gain": 0.0029,
+        "mae_change_pct": 1.1
+      },
+      "Random Forest": {
+        "r2_gain": -0.0154,
+        "mae_change_pct": 4.4
+      }
+    },
+    "gbm_better_days": 4
+  },
+  "leave_one_road_out": {
+    "folds": 22,
+    "pooled": [
+      {
+        "name": "Gradient Boosting without the road input",
+        "type": "model",
+        "r2": 0.42291927899067006,
+        "mae": 9875.869448422702,
+        "mae_pct_of_mean": 42.097585548373516
+      },
+      {
+        "name": "Hour average of the other roads",
+        "type": "baseline",
+        "r2": 0.41138038844125935,
+        "mae": 9919.252791323193,
+        "mae_pct_of_mean": 42.2825144803188
+      },
+      {
+        "name": "Gradient Boosting without road input, Silk Board family removed",
+        "type": "model",
+        "r2": 0.24975646914644334,
+        "mae": 11281.121716567588,
+        "mae_pct_of_mean": 48.08771410203959
+      },
+      {
+        "name": "Gradient Boosting as deployed (with road label)",
+        "type": "model",
+        "r2": 0.07387804787331775,
+        "mae": 12771.676699174282,
+        "mae_pct_of_mean": 54.441460090942016
+      },
+      {
+        "name": "Random Forest as deployed (with road label)",
+        "type": "model",
+        "r2": 0.01441964002873386,
+        "mae": 12901.317795092953,
+        "mae_pct_of_mean": 54.994077473596136
+      },
+      {
+        "name": "Global mean",
+        "type": "baseline",
+        "r2": -0.03031419792259049,
+        "mae": 14277.59467791764,
+        "mae_pct_of_mean": 60.860693483006266
+      }
+    ],
+    "per_road": [
+      {
+        "road": "100 Feet Road",
+        "avg_total": 31401.4156626506,
+        "in_silk_board_family": false,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": 0.7701614546137066,
+            "mae": 5914.564278373282,
+            "mae_pct_of_mean": 18.835342781721046
+          },
+          "Gradient Boosting without the road input": {
+            "r2": 0.514615756112098,
+            "mae": 8916.414314649499,
+            "mae_pct_of_mean": 28.394943751707473
+          },
+          "Hour average of the other roads": {
+            "r2": 0.5213456247223105,
+            "mae": 8997.189538061655,
+            "mae_pct_of_mean": 28.65217808878302
+          }
+        }
+      },
+      {
+        "road": "Anil Kumble Circle",
+        "avg_total": 34960.91017964072,
+        "in_silk_board_family": false,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": 0.8116530613195085,
+            "mae": 6168.347016603985,
+            "mae_pct_of_mean": 17.643553857462457
+          },
+          "Gradient Boosting without the road input": {
+            "r2": 0.35369381878194994,
+            "mae": 12423.088174191187,
+            "mae_pct_of_mean": 35.534224110176915
+          },
+          "Hour average of the other roads": {
+            "r2": 0.3503193053047806,
+            "mae": 12594.810795358719,
+            "mae_pct_of_mean": 36.025408751209326
+          }
+        }
+      },
+      {
+        "road": "Ballari Road",
+        "avg_total": 25756.025157232703,
+        "in_silk_board_family": false,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": 0.32639062041065037,
+            "mae": 9354.600291715977,
+            "mae_pct_of_mean": 36.3200464148058
+          },
+          "Gradient Boosting without the road input": {
+            "r2": 0.7225788808262321,
+            "mae": 5877.055878907785,
+            "mae_pct_of_mean": 22.81817882623637
+          },
+          "Hour average of the other roads": {
+            "r2": 0.740213096698551,
+            "mae": 5698.362288835729,
+            "mae_pct_of_mean": 22.124385475045
+          }
+        }
+      },
+      {
+        "road": "Bommanahalli",
+        "avg_total": 8666.533834586466,
+        "in_silk_board_family": true,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": -12.130315696980801,
+            "mae": 18386.337381856378,
+            "mae_pct_of_mean": 212.1532983403359
+          },
+          "Gradient Boosting without the road input": {
+            "r2": -8.838385820047517,
+            "mae": 15975.965236712826,
+            "mae_pct_of_mean": 184.34088577553146
+          },
+          "Hour average of the other roads": {
+            "r2": -9.449341086768726,
+            "mae": 16386.120297221158,
+            "mae_pct_of_mean": 189.0735167019981
+          }
+        }
+      },
+      {
+        "road": "Bommasandra",
+        "avg_total": 14462.84962406015,
+        "in_silk_board_family": true,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": 0.36172024451353324,
+            "mae": 5775.384675884083,
+            "mae_pct_of_mean": 39.932550126748545
+          },
+          "Gradient Boosting without the road input": {
+            "r2": -0.5487593535817956,
+            "mae": 9982.30060927378,
+            "mae_pct_of_mean": 69.02028900768902
+          },
+          "Hour average of the other roads": {
+            "r2": -0.7430950795042568,
+            "mae": 10458.5876527907,
+            "mae_pct_of_mean": 72.31346466737766
+          }
+        }
+      },
+      {
+        "road": "CMH Road",
+        "avg_total": 31987.30909090909,
+        "in_silk_board_family": false,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": -0.5240034006230074,
+            "mae": 18845.26051898982,
+            "mae_pct_of_mean": 58.91480419759883
+          },
+          "Gradient Boosting without the road input": {
+            "r2": 0.5017208198798503,
+            "mae": 9783.094547105251,
+            "mae_pct_of_mean": 30.584299915011115
+          },
+          "Hour average of the other roads": {
+            "r2": 0.4998498578220908,
+            "mae": 9803.728542998873,
+            "mae_pct_of_mean": 30.648806734997063
+          }
+        }
+      },
+      {
+        "road": "Electronic City",
+        "avg_total": 13255.105263157895,
+        "in_silk_board_family": true,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": -5.061329494344157,
+            "mae": 19657.431781839343,
+            "mae_pct_of_mean": 148.30083497319703
+          },
+          "Gradient Boosting without the road input": {
+            "r2": -1.2265440437865802,
+            "mae": 11177.106067724997,
+            "mae_pct_of_mean": 84.32302758689796
+          },
+          "Hour average of the other roads": {
+            "r2": -1.470593576717262,
+            "mae": 11622.024796269627,
+            "mae_pct_of_mean": 87.67961148202
+          }
+        }
+      },
+      {
+        "road": "HSR Layout",
+        "avg_total": 7807.12030075188,
+        "in_silk_board_family": true,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": -1.1895198960045361,
+            "mae": 6085.527055995818,
+            "mae_pct_of_mean": 77.94842171715658
+          },
+          "Gradient Boosting without the road input": {
+            "r2": -11.993829087218078,
+            "mae": 16889.160464670585,
+            "mae_pct_of_mean": 216.33021926207596
+          },
+          "Hour average of the other roads": {
+            "r2": -12.71312002749296,
+            "mae": 17283.63359075466,
+            "mae_pct_of_mean": 221.3829545971019
+          }
+        }
+      },
+      {
+        "road": "Hebbal Flyover",
+        "avg_total": 26412.966666666667,
+        "in_silk_board_family": false,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": -1.011260198555541,
+            "mae": 18637.062330962297,
+            "mae_pct_of_mean": 70.5602765723488
+          },
+          "Gradient Boosting without the road input": {
+            "r2": 0.6779307849289073,
+            "mae": 6159.969304137037,
+            "mae_pct_of_mean": 23.32176230665887
+          },
+          "Hour average of the other roads": {
+            "r2": 0.708661185857155,
+            "mae": 5889.08960726148,
+            "mae_pct_of_mean": 22.296206562413712
+          }
+        }
+      },
+      {
+        "road": "Hosa Road",
+        "avg_total": 12114.195488721805,
+        "in_silk_board_family": true,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": -3.2542036998672623,
+            "mae": 14971.502740601287,
+            "mae_pct_of_mean": 123.58643836100883
+          },
+          "Gradient Boosting without the road input": {
+            "r2": -2.111466358259477,
+            "mae": 12368.761045469886,
+            "mae_pct_of_mean": 102.1013822749111
+          },
+          "Hour average of the other roads": {
+            "r2": -2.410636594554567,
+            "mae": 12785.26057914635,
+            "mae_pct_of_mean": 105.53949365477303
+          }
+        }
+      },
+      {
+        "road": "Hosur Road",
+        "avg_total": 16783.094890510947,
+        "in_silk_board_family": false,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": 0.5075982145022444,
+            "mae": 5744.249316432565,
+            "mae_pct_of_mean": 34.226400755681404
+          },
+          "Gradient Boosting without the road input": {
+            "r2": 0.2100372741411778,
+            "mae": 7487.5133149508065,
+            "mae_pct_of_mean": 44.61342418545341
+          },
+          "Hour average of the other roads": {
+            "r2": 0.31059186457651144,
+            "mae": 7045.149746952643,
+            "mae_pct_of_mean": 41.97765544980577
+          }
+        }
+      },
+      {
+        "road": "ITPL Main Road",
+        "avg_total": 22469.967105263157,
+        "in_silk_board_family": false,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": 0.5810109292500063,
+            "mae": 6044.721829674536,
+            "mae_pct_of_mean": 26.90133813439663
+          },
+          "Gradient Boosting without the road input": {
+            "r2": 0.7464845831243905,
+            "mae": 4541.731471850606,
+            "mae_pct_of_mean": 20.212452695521716
+          },
+          "Hour average of the other roads": {
+            "r2": 0.7724254052633464,
+            "mae": 4341.1411949856865,
+            "mae_pct_of_mean": 19.31974877688565
+          }
+        }
+      },
+      {
+        "road": "Jayanagar 4th Block",
+        "avg_total": 24385.524096385543,
+        "in_silk_board_family": false,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": 0.7681281043442532,
+            "mae": 4638.417780854092,
+            "mae_pct_of_mean": 19.02119373165986
+          },
+          "Gradient Boosting without the road input": {
+            "r2": 0.8016060655829966,
+            "mae": 4354.341474843287,
+            "mae_pct_of_mean": 17.85625544742216
+          },
+          "Hour average of the other roads": {
+            "r2": 0.8185488076170486,
+            "mae": 4065.314159392877,
+            "mae_pct_of_mean": 16.671014095593883
+          }
+        }
+      },
+      {
+        "road": "Kudlu Gate",
+        "avg_total": 11288.593984962406,
+        "in_silk_board_family": true,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": -3.41414568014297,
+            "mae": 13775.925685212718,
+            "mae_pct_of_mean": 122.03402570385381
+          },
+          "Gradient Boosting without the road input": {
+            "r2": -3.1018384556979104,
+            "mae": 13243.7879775856,
+            "mae_pct_of_mean": 117.32008428354955
+          },
+          "Hour average of the other roads": {
+            "r2": -3.4433659833872055,
+            "mae": 13647.68405205927,
+            "mae_pct_of_mean": 120.89799730807415
+          }
+        }
+      },
+      {
+        "road": "Marathahalli Bridge",
+        "avg_total": 20989.75974025974,
+        "in_silk_board_family": false,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": 0.13030228881882977,
+            "mae": 9754.751834076753,
+            "mae_pct_of_mean": 46.47386132470348
+          },
+          "Gradient Boosting without the road input": {
+            "r2": 0.6689502251083761,
+            "mae": 5111.079748994336,
+            "mae_pct_of_mean": 24.350348990374336
+          },
+          "Hour average of the other roads": {
+            "r2": 0.6923145955218516,
+            "mae": 4865.0061286476985,
+            "mae_pct_of_mean": 23.17799817077609
+          }
+        }
+      },
+      {
+        "road": "Sarjapur Road",
+        "avg_total": 39519.77245508982,
+        "in_silk_board_family": false,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": -0.1442301563775601,
+            "mae": 19416.2867432438,
+            "mae_pct_of_mean": 49.13056310055536
+          },
+          "Gradient Boosting without the road input": {
+            "r2": 0.06850061303686594,
+            "mae": 17253.968815848344,
+            "mae_pct_of_mean": 43.659079351875604
+          },
+          "Hour average of the other roads": {
+            "r2": 0.05765040036650504,
+            "mae": 17414.776971829335,
+            "mae_pct_of_mean": 44.0659849234189
+          }
+        }
+      },
+      {
+        "road": "Silk Board Junction",
+        "avg_total": 17038.654135338347,
+        "in_silk_board_family": true,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": -4.912455648667392,
+            "mae": 24389.14228760442,
+            "mae_pct_of_mean": 143.1400748784558
+          },
+          "Gradient Boosting without the road input": {
+            "r2": 0.25566039506021765,
+            "mae": 7657.564968629444,
+            "mae_pct_of_mean": 44.94231121663285
+          },
+          "Hour average of the other roads": {
+            "r2": 0.11997891601932142,
+            "mae": 8251.507101762567,
+            "mae_pct_of_mean": 48.428162437130844
+          }
+        }
+      },
+      {
+        "road": "Sony World Junction",
+        "avg_total": 41976.375757575755,
+        "in_silk_board_family": false,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": -0.5413467822747704,
+            "mae": 25412.906810120923,
+            "mae_pct_of_mean": 60.5409741824471
+          },
+          "Gradient Boosting without the road input": {
+            "r2": -0.04053478139400468,
+            "mae": 19723.193204046027,
+            "mae_pct_of_mean": 46.98641282885517
+          },
+          "Hour average of the other roads": {
+            "r2": -0.05785306234644927,
+            "mae": 19962.94682591881,
+            "mae_pct_of_mean": 47.55757605470731
+          }
+        }
+      },
+      {
+        "road": "South End Circle",
+        "avg_total": 24420.89440993789,
+        "in_silk_board_family": false,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": -1.2097593939639877,
+            "mae": 17120.11219085559,
+            "mae_pct_of_mean": 70.10436187746136
+          },
+          "Gradient Boosting without the road input": {
+            "r2": 0.7545749097175454,
+            "mae": 4686.494393113695,
+            "mae_pct_of_mean": 19.19051085699205
+          },
+          "Hour average of the other roads": {
+            "r2": 0.809020476941299,
+            "mae": 4163.993261995872,
+            "mae_pct_of_mean": 17.050944949425634
+          }
+        }
+      },
+      {
+        "road": "Trinity Circle",
+        "avg_total": 35301.07272727273,
+        "in_silk_board_family": false,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": 0.4927819399835205,
+            "mae": 11106.79877147451,
+            "mae_pct_of_mean": 31.46306305557019
+          },
+          "Gradient Boosting without the road input": {
+            "r2": 0.3575068283044689,
+            "mae": 12868.744393293788,
+            "mae_pct_of_mean": 36.45425874934309
+          },
+          "Hour average of the other roads": {
+            "r2": 0.3432589663134329,
+            "mae": 13060.767381270072,
+            "mae_pct_of_mean": 36.99821668926125
+          }
+        }
+      },
+      {
+        "road": "Tumkur Road",
+        "avg_total": 18389.020134228187,
+        "in_silk_board_family": false,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": -2.086854084045963,
+            "mae": 16224.786711772485,
+            "mae_pct_of_mean": 88.23083880131638
+          },
+          "Gradient Boosting without the road input": {
+            "r2": 0.38991410703287144,
+            "mae": 6218.308450517342,
+            "mae_pct_of_mean": 33.81533330828741
+          },
+          "Hour average of the other roads": {
+            "r2": 0.4832676385746275,
+            "mae": 5803.566407854658,
+            "mae_pct_of_mean": 31.55995461146001
+          }
+        }
+      },
+      {
+        "road": "Yeshwanthpur Circle",
+        "avg_total": 19001.806666666667,
+        "in_silk_board_family": false,
+        "methods": {
+          "Gradient Boosting as deployed (with road label)": {
+            "r2": 0.6721191595376513,
+            "mae": 4458.142320227187,
+            "mae_pct_of_mean": 23.46167603129941
+          },
+          "Gradient Boosting without the road input": {
+            "r2": 0.49376967602436206,
+            "mae": 5507.005214292527,
+            "mae_pct_of_mean": 28.98148218691763
+          },
+          "Hour average of the other roads": {
+            "r2": 0.5236768900275756,
+            "mae": 5333.922125297047,
+            "mae_pct_of_mean": 28.07060517384337
+          }
+        }
+      }
+    ],
+    "roads_with_positive_r2": {
+      "Gradient Boosting as deployed (with road label)": 10,
+      "Gradient Boosting without the road input": 15,
+      "Hour average of the other roads": 15
+    }
+  },
+  "notes": [
+    "Models are retrained from scratch in every fold with the same settings as train_model.py.",
+    "Leave-one-road-out: Road_Encoded is only a label number, so the deployed models cannot predict a new road. Claim only that the model predicts the 22 roads in the dataset.",
+    "Silk Board and six corridor junctions share one hourly shape, so holding out one of them still leaves lookalikes in training unless the whole family is removed (the \"family removed\" row)."
+  ]
+}
